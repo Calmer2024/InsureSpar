@@ -1,0 +1,78 @@
+# Test your FastAPI endpoints
+
+GET http://127.0.0.1:8000/
+Accept: application/json
+
+###
+
+GET http://127.0.0.1:8000/hello/User
+Accept: application/json
+
+###
+
+### 测试 1：正常注册 (应该返回 200 OK，并且你看不到密码字段)
+POST http://127.0.0.1:8000/api/users/register
+Content-Type: application/json
+
+{
+  "username": "Spring老手1",
+  "email": "test@example.com",
+  "password": "mypassword123123"
+}
+
+### 测试 2：邮箱格式错误 (应该触发 Pydantic 的 422 Unprocessable Entity 报错)
+POST http://127.0.0.1:8000/api/users/register
+Content-Type: application/json
+
+{
+  "username": "Spring老手",
+  "email": "这不是一个合法的邮箱",
+  "password": "mypassword123"
+}
+
+### 测试 3：密码太短 (应该触发 Field(min_length=6) 的 422 报错)
+POST http://127.0.0.1:8000/api/users/register
+Content-Type: application/json
+
+{
+  "username": "Spring老手",
+  "email": "test2@example.com",
+  "password": "123"
+}
+
+### 第一步：先注册一个用户 (如果你重启了服务，假数据库会清空，所以要重新注册)
+POST http://127.0.0.1:8000/api/users/register
+Content-Type: application/json
+
+{
+  "username": "Spring老手",
+  "email": "test@example.com",
+  "password": "mypassword123"
+}
+
+### 第二步：测试登录获取 Token！(注意这里的 Content-Type 和数据格式)
+POST http://127.0.0.1:8000/api/users/login
+Content-Type: application/x-www-form-urlencoded
+
+username=Spring老手&password=mypassword123
+
+### 1. 重新注册一个用户 (因为重启清空了假数据库)
+POST http://127.0.0.1:8000/api/users/register
+Content-Type: application/json
+
+{
+  "username": "Spring老手1",
+  "email": "test1@example.com",
+  "password": "mypassword123"
+}
+
+### 2. 登录并获取 Token (复制返回体里的 access_token 字符串)
+POST http://127.0.0.1:8000/api/users/login
+Content-Type: application/x-www-form-urlencoded
+
+username=Spring老手&password=mypassword123
+
+### 3. 测试受保护接口：获取个人信息
+# ⚠️ 注意：把下面 Bearer 后面的部分，替换成你刚才登录获取到的真实的 token 字符串！
+GET http://127.0.0.1:8000/api/users/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJTcHJpbmdcdTgwMDFcdTYyNGIiLCJleHAiOjE3NzIxMTY2NDR9.EaoKRp_ddVzP3FislLS2uffCdTCkuwpMYmnIRqxRgek (粘到这里)

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>LangGraph Agent 测试控制台</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; display: flex; justify-content: center; padding-top: 50px; }
+        .chat-container { width: 600px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+        .chat-box { height: 400px; overflow-y: auto; padding: 20px; border-bottom: 1px solid #ddd; }
+        .message { margin-bottom: 15px; line-height: 1.5; }
+        .user-msg { color: #0056b3; font-weight: bold; }
+        .ai-msg { color: #333; }
+        /* 系统/工具调用的提示样式 */
+        .system-msg { color: #888; font-size: 0.9em; font-style: italic; background: #f9f9f9; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; }
+        .input-area { display: flex; padding: 10px; background: #fafafa; }
+        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
+        button { margin-left: 10px; padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #94d3a2; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-box" id="chatBox">
+        <div class="message ai-msg"><b>🤖 AI:</b> 你好！我是带有计算器工具的智能体，请问有什么可以帮您？</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="messageInput" placeholder="例如：算一下 1234.5 乘以 678.9" onkeypress="if(event.key === 'Enter') sendMessage()">
+        <button id="sendBtn" onclick="sendMessage()">发送</button>
+    </div>
+</div>
+
+<script>
+    async function sendMessage() {
+        const inputEl = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatBox = document.getElementById('chatBox');
+        const message = inputEl.value.trim();
+        if (!message) return;
+
+        // 1. 把用户的消息先上屏，并清空输入框
+        chatBox.innerHTML += `<div class="message user-msg"><b>🧑 你:</b> ${message}</div>`;
+        inputEl.value = '';
+        sendBtn.disabled = true; // 锁定发送按钮
+
+        // 2. 为 AI 的回复提前建好一个空的容器
+        const aiMessageDiv = document.createElement('div');
+        aiMessageDiv.className = 'message ai-msg';
+        aiMessageDiv.innerHTML = `<b>🤖 AI:</b> <span class="content"></span>`;
+        chatBox.appendChild(aiMessageDiv);
+        const contentSpan = aiMessageDiv.querySelector('.content');
+
+        try {
+            // 3. 发送 POST 请求到我们写好的流式接口
+            const response = await fetch('/api/ai/chat/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+
+            // 4. 核心魔法：解析流式数据 (ReadableStream)
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break; // 数据传输完毕，退出循环
+
+                // 把二进制流解码成字符串，拼接到缓冲区
+                buffer += decoder.decode(value, { stream: true });
+
+                // 处理 SSE 格式：每条数据以 \n\n 结尾
+                let lines = buffer.split('\n\n');
+                buffer = lines.pop(); // 把不完整的最后一段塞回 buffer 等待下一次拼接
+
+                for (let line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const jsonStr = line.substring(6); // 截去前面的 "data: "
+                        try {
+                            const data = JSON.parse(jsonStr);
+                            // 5. 根据后端传来的不同类型，做不同的渲染！
+                            if (data.type === 'system') {
+                                // 渲染工具调用的系统提示 (灰色斜体)
+                                contentSpan.innerHTML += `<br><span class="system-msg">${data.content}</span><br>`;
+                            } else if (data.type === 'text') {
+                                // 渲染打字机文字 (直接追加)
+                                contentSpan.innerHTML += data.content;
+                            }
+                            // 让滚动条始终保持在最底部
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        } catch (e) {
+                            console.error("JSON解析出错", e);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            contentSpan.innerHTML += `<br><span style="color:red;">连接出错: ${error.message}</span>`;
+        } finally {
+            sendBtn.disabled = false; // 解锁发送按钮
+        }
+    }
+</script>
+</body>
+</html>
