@@ -18,15 +18,20 @@ from app.agents.customer_graph import customer_graph
 from app.agents.evaluator import evaluate_turn
 from app.agents.state import DialogueStage
 
-router = APIRouter(prefix="/api", tags=["智能体对练"])
+router = APIRouter(prefix="/api", tags=["人机手动对练 (Manual)"])
 
 
 # ==========================================
 # 1. 创建对话会话
 # ==========================================
-@router.post("/session/create", response_model=CreateSessionResponse)
+@router.post("/session/create", response_model=CreateSessionResponse, summary="创建手动对练会话")
 async def create_session(request: CreateSessionRequest):
-    """创建一个新的对练会话，选择客户画像"""
+    """
+    **功能**: 创建一个新的手动对练会话。
+    **流程**: 
+    1. 根据传入的 `persona_id` 获取对应的客户画像。
+    2. 生成唯一的 `session_id` 并初始化会话状态 (默认 `INTRODUCTION`)。
+    """
     persona = PERSONAS.get(request.persona_id)
     if not persona:
         available = list(PERSONAS.keys())
@@ -49,9 +54,14 @@ async def create_session(request: CreateSessionRequest):
 # ==========================================
 # 2. 发送销售消息
 # ==========================================
-@router.post("/chat/send", response_model=ChatSendResponse)
+@router.post("/chat/send", response_model=ChatSendResponse, summary="发送销售话术并获取回复")
 async def send_message(request: ChatSendRequest, background_tasks: BackgroundTasks):
-    """发送一条销售消息，获取客户AI的回复"""
+    """
+    **功能**: （同步接口）销售发送一句话，AI客户思考后返回回复。
+    **说明**: 
+    此接口为同步等待结果，不建议在需要看到中间思考过程（如工具调用）的场景使用。
+    建议前端使用 `/api/chat/stream` 接口替代。
+    """
     session = session_manager.get_session(request.session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"会话 '{request.session_id}' 不存在")
@@ -137,9 +147,12 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
 # ==========================================
 # 3. 获取对话历史
 # ==========================================
-@router.get("/session/{session_id}/history", response_model=SessionHistoryResponse)
+@router.get("/session/{session_id}/history", response_model=SessionHistoryResponse, summary="查询会话对话历史")
 async def get_session_history(session_id: str):
-    """获取指定会话的完整对话历史"""
+    """
+    **功能**: 获取指定手动对练会话的完整对话聊天记录。
+    **说明**: 返回数据包括发言角色 (sales/customer)，发言内容以及所属的轮次。
+    """
     session = session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"会话 '{session_id}' 不存在")
@@ -176,9 +189,12 @@ async def get_session_history(session_id: str):
 # ==========================================
 # 4. 获取评分报告
 # ==========================================
-@router.get("/session/{session_id}/evaluation", response_model=SessionEvaluationResponse)
+@router.get("/session/{session_id}/evaluation", response_model=SessionEvaluationResponse, summary="查询会话评分记录")
 async def get_session_evaluation(session_id: str):
-    """获取指定会话的所有评分（后台异步打分的结果）"""
+    """
+    **功能**: 获取指定会话由考官Agent后台“异步打分”产生的所有轮次评分结果。
+    **说明**: 包含每轮的专业、合规、策略得分及教练点评，并自动计算出当前平均分。
+    """
     session = session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"会话 '{session_id}' 不存在")
@@ -210,9 +226,12 @@ async def get_session_evaluation(session_id: str):
 # ==========================================
 # 5. 辅助：列出可用画像
 # ==========================================
-@router.get("/personas")
+@router.get("/personas", summary="列出支持的客户画像")
 async def list_personas():
-    """列出所有可用的客户画像"""
+    """
+    **功能**: 返回系统内置的所有 AI 客户画像列表。
+    **说明**: 获取画像的 `persona_id`，用于在 `/session/create` 中选用。
+    """
     return [
         {
             "persona_id": p["persona_id"],
@@ -237,9 +256,19 @@ STAGE_LABELS = {
 }
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", summary="流式发送话术并获取实时响应 (SSE)")
 async def stream_chat(request: ChatSendRequest):
-    """SSE 流式对话：实时推送对话管理、客户回复(逐token)、工具调用等内部事件"""
+    """
+    **功能**: （推荐前端使用）发送一条销售消息，并以 Server-Sent Events (SSE) 格式实时获取 AI 思考过程和恢复。
+    
+    **返回事件类型**包括：
+    - `status`: 内部节点的执行状态提示
+    - `tool_call`: 客户AI正在调用查找条款工具
+    - `tool_result`: 工具返回的核查结果
+    - `token`: 客户回复文字的打字机流式输出
+    - `stage_update`: 对话管理器对本轮状态的重新判定
+    - `force_guard`: 触发防线规则的系统级警告信息
+    """
     session = session_manager.get_session(request.session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"会话 '{request.session_id}' 不存在")

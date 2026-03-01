@@ -9,13 +9,16 @@ import json
 
 router = APIRouter(prefix="/api/history", tags=["历史记录与查询"])
 
-@router.get("/sessions")
+@router.get("/sessions", summary="获取历史会话列表（支持分页）")
 def list_sessions(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, le=100),
+    skip: int = Query(0, ge=0, description="跳过记录数"),
+    limit: int = Query(50, le=100, description="限制返回数量（最多100）"),
     db: Session = Depends(get_db)
 ):
-    """获取所有历史会话列表（支持分页）"""
+    """
+    **功能**: 查询所有的对话会话历史列表 (包括手动模式及 Auto 模式)。
+    **排序**: 按照会话开始时间 `start_time` 倒序排列。
+    """
     sessions = db.query(SessionRecord).order_by(desc(SessionRecord.start_time)).offset(skip).limit(limit).all()
     # 返回简要信息
     return [
@@ -32,9 +35,17 @@ def list_sessions(
         for s in sessions
     ]
 
-@router.get("/sessions/{session_id}")
+@router.get("/sessions/{session_id}", summary="获取会话所有明细（对话、评分、报告）")
 def get_session_detail(session_id: str, db: Session = Depends(get_db)):
-    """获取指定会话的完整历史（含对话记录、各轮评分和终极报告）"""
+    """
+    **功能**: 获取指定一次会话的超级全量数据。
+    
+    **返回结构内容包括**:
+    1. **`session_info`**: 会话的基础信息（结局、时长等）。
+    2. **`conversation_logs`**: 按顺序排好的每一轮对话记录。
+    3. **`evaluations`**: AI 考官给出的每一轮 3维度具体打分与教练短评。
+    4. **`final_report`**: 对话结束后 AI 总监产出的综合点评和 6维度雷达评分 (如果会话尚未结束且未触发生成报告，则此字段为空)。
+    """
     session = db.query(SessionRecord).filter(SessionRecord.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")

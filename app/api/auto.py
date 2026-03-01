@@ -14,7 +14,7 @@ from app.agents.customer_graph import customer_graph
 from app.agents.evaluator import evaluate_turn, generate_final_report
 from app.agents.state import DialogueStage
 
-router = APIRouter(prefix="/api/auto", tags=["Auto-Agent 自动对战"])
+router = APIRouter(prefix="/api/auto", tags=["全自动对战 (Auto)"])
 
 STAGE_LABELS = {
     DialogueStage.INTRODUCTION:       "💬 破冰与探寻",
@@ -49,9 +49,12 @@ class AutoStepRequest(BaseModel):
 # ==========================================
 # 1. 列出销售策略
 # ==========================================
-@router.get("/strategies")
+@router.get("/strategies", summary="列出自动对战支持的销售策略")
 async def list_strategies():
-    """列出所有可用的销售策略风格"""
+    """
+    **功能**: 获取系统可用的“AI销售策略”列表（仅在Auto模式使用）。
+    **说明**: 不同策略决定了 AI 销售在应对异议和逼单时的强硬程度及切入点。
+    """
     return [
         {
             "strategy_id": s["strategy_id"],
@@ -68,9 +71,14 @@ async def list_strategies():
 # ==========================================
 # 2. 创建自动对战会话
 # ==========================================
-@router.post("/session/create")
+@router.post("/session/create", summary="创建自动对战会话")
 async def create_auto_session(request: CreateAutoSessionRequest):
-    """创建 Auto-Agent 自动对战会话（需指定画像和销售策略）"""
+    """
+    **功能**: 创建一个由 AI销售 和 AI客户 全程自动演绎的对练会话。
+    **流程**:
+    1. 校验客户画像 (`persona_id`) 和 销售策略 (`strategy_id`)。
+    2. 绑定策略到对话会话，生成 ID 并返回。
+    """
     persona = PERSONAS.get(request.persona_id)
     if not persona:
         raise HTTPException(400, f"画像 '{request.persona_id}' 不存在")
@@ -99,10 +107,19 @@ async def create_auto_session(request: CreateAutoSessionRequest):
 # ==========================================
 # 3. 推进一步（SSE 流式）
 # ==========================================
-@router.post("/step")
+@router.post("/step", summary="执行自动对战触发器 (SSE)")
 async def auto_step(request: AutoStepRequest):
-    """推进自动对战一步（SSE流式）：
-    销售Agent思考 → 工具调用 → 销售发言 → 客户回复 → 后台考官评分
+    """
+    **功能**: 触发并直播一轮全自动的对话演绎过程。
+    
+    **流程**: 
+    1. **销售Agent**: 依据当前对战策略和对话历史生成推销话术 (包含内部思考和工具查询)。
+    2. **客户Agent**: 从节点接入，回复或反驳。
+    3. **对话管理器 (DM)**: 分析最终的一来一回，判定阶段变化。
+    
+    **返回 (Server-Sent Events 格式)**:
+    - 销售、客户打字机令牌
+    - DM判断状态流事件
     """
     session = session_manager.get_session(request.session_id)
     if not session:
@@ -330,9 +347,19 @@ async def get_auto_status(session_id: str):
 # ==========================================
 # 终极评估报告
 # ==========================================
-@router.get("/session/{session_id}/final-report")
+@router.get("/session/{session_id}/final-report", summary="生成并获取终极能力评估报告")
 async def get_final_report(session_id: str):
-    """生成终极评估报告：汇总评分 + LLM总监点评 + 6维雷达图"""
+    """
+    **功能**: 当对话结束（成交/明确拒绝/待跟进）后，总结一整局的能力表现并生成报告。
+    
+    **处理逻辑**:
+    1. 读取当前会话每一轮的考官打分日志。
+    2. 将整局对话合并提炼，发送给大模型（AI 总监）。
+    3. 产出两项核心内容：
+       - `review`: 500字左右的总监综合点评。
+       - `radar`: 6个维度（沟通、产品熟悉度、合规、异议处理、需求挖掘、促成）的具体评分(1-10分)。
+    4. **持久化**: 同时将最终报告异步存入 `final_reports` 表。
+    """
     session = session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"会话 '{session_id}' 不存在")
