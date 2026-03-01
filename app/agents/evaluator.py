@@ -369,3 +369,178 @@ async def evaluate_turn(
                     "overall_advice": f"评分异常: {str(e)}",
                 })
 
+
+# ==========================================
+# 终极评估报告生成
+# ==========================================
+async def generate_final_report(
+    session_id: str,
+    persona_id: str,
+    conversation_history: list,
+    evaluations: list,
+    final_stage: str,
+    turn_count: int,
+    strategy_id: str = None,
+) -> dict:
+    """
+    生成终极评估报告：
+    1. 汇总所有轮次评分
+    2. 调用 LLM 生成500字总监综合点评
+    3. 输出6维雷达图数据
+    """
+    import json
+    from openai import AsyncOpenAI
+
+    persona = PERSONAS.get(persona_id, {})
+
+    # ---- 1. 汇总评分 ----
+    valid_evals = [e for e in evaluations if e.get("professionalism_score", -1) >= 0]
+    if not valid_evals:
+        return {"error": "没有有效的评分数据"}
+
+    avg_prof = round(sum(e["professionalism_score"] for e in valid_evals) / len(valid_evals), 1)
+    avg_comp = round(sum(e["compliance_score"] for e in valid_evals) / len(valid_evals), 1)
+    avg_strat = round(sum(e["strategy_score"] for e in valid_evals) / len(valid_evals), 1)
+    avg_total = round((avg_prof + avg_comp + avg_strat) / 3, 1)
+
+    # 收集每轮评语
+    turn_comments = []
+    for e in valid_evals:
+        turn_comments.append(
+            f"第{e.get('turn', '?')}轮: 专业{e['professionalism_score']}分({e.get('professionalism_comment', '')[:40]}) "
+            f"合规{e['compliance_score']}分({e.get('compliance_comment', '')[:40]}) "
+            f"策略{e['strategy_score']}分({e.get('strategy_comment', '')[:40]})"
+        )
+
+    # 构建对话摘要（节约 token，只取关键内容）
+    dialogue_summary = []
+    for i, msg in enumerate(conversation_history):
+        role_label = "销售" if msg.get("role") == "sales" else "客户"
+        content = msg.get("content", "")[:150]
+        dialogue_summary.append(f"{role_label}: {content}")
+
+    # ---- 2. LLM 生成总监点评 + 雷达图数据 ----
+    client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+
+    prompt = f"""你是保险销售总监。请对这位销售的一整局对练表现做出终极评估。
+
+【客户画像】
+{persona.get('name', '未知')} | {persona.get('demographics', '未知')}
+态度: {persona.get('insurance_awareness', '未知')} | 关注: {persona.get('core_focus', '未知')}
+
+【对话结局】{final_stage} | 共{turn_count}轮
+
+【各轮评分汇总】
+{chr(10).join(turn_comments)}
+
+平均分: 专业{avg_prof} | 合规{avg_comp} | 策略{avg_strat} | 综合{avg_total}
+
+【对话全文摘要】
+{chr(10).join(dialogue_summary[-20:])}
+
+请输出以下 JSON，包含两部分：
+
+1. "review": 一段400-500字的总监综合点评，要求：
+   - 开头总结本局表现的整体评价（优秀/良好/及格/需改进）
+   - 分析3个做得好的亮点
+   - 指出3个需要改进的问题（具体到哪一轮、说了什么话）
+   - 给出2-3条可操作的改进建议
+   - 结尾给出一句总结性的鼓励或鞭策
+
+2. "radar": 6个维度的评分（0-10），基于整局表现综合判断：
+   - communication: 沟通技巧（表达清晰度、倾听能力、共情力）
+   - product_knowledge: 产品熟悉度（保费/条款/核保规则的准确性）
+   - compliance: 合规意识（健康告知、不违规承诺）
+   - objection_handling: 异议处理能力（面对质疑的应对水平）
+   - needs_analysis: 需求挖掘（是否精准抓到客户痛点）
+   - closing: 促成能力（推动决策的节奏和技巧）
+
+输出格式：
+{{
+  "review": "400-500字的总监综合点评...",
+  "radar": {{
+    "communication": 8,
+    "product_knowledge": 7,
+    "compliance": 9,
+    "objection_handling": 6,
+    "needs_analysis": 7,
+    "closing": 5
+  }}
+}}"""
+
+    try:
+        response = await client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={'type': 'json_object'},
+            temperature=0.3,
+        )
+        content = response.choices[0].message.content
+        if content.startswith("```json"):
+            content = content[7:-3].strip()
+        elif content.startswith("```"):
+            content = content[3:-3].strip()
+
+        llm_result = json.loads(content)
+    except Exception as e:
+        print(f"❌ [终极报告] LLM 生成失败: {e}")
+        traceback.print_exc()
+        llm_result = {
+            "review": f"报告生成失败: {str(e)}",
+            "radar": {
+                "communication": avg_strat,
+                "product_knowledge": avg_prof,
+                "compliance": avg_comp,
+                "objection_handling": avg_strat,
+                "needs_analysis": avg_strat,
+                "closing": avg_strat,
+            }
+        }
+
+    # ---- 3. 组装最终报告 ----
+    radar = llm_result.get("radar", {})
+    radar_labels = {
+        "communication": "沟通技巧",
+        "product_knowledge": "产品熟悉度",
+        "compliance": "合规意识",
+        "objection_handling": "异议处理",
+        "needs_analysis": "需求挖掘",
+        "closing": "促成能力",
+    }
+
+    report = {
+        "session_id": session_id,
+        "persona_name": persona.get("name", "未知"),
+        "final_stage": final_stage,
+        "turn_count": turn_count,
+        "strategy_id": strategy_id,
+        # 汇总分数
+        "avg_scores": {
+            "professionalism": avg_prof,
+            "compliance": avg_comp,
+            "strategy": avg_strat,
+            "total": avg_total,
+        },
+        # 各轮明细
+        "per_turn_scores": [
+            {
+                "turn": e.get("turn", "?"),
+                "professionalism": e["professionalism_score"],
+                "compliance": e["compliance_score"],
+                "strategy": e["strategy_score"],
+                "advice": e.get("overall_advice", ""),
+            }
+            for e in valid_evals
+        ],
+        # 总监点评
+        "review": llm_result.get("review", ""),
+        # 雷达图数据
+        "radar": {
+            "labels": list(radar_labels.values()),
+            "keys": list(radar_labels.keys()),
+            "scores": [radar.get(k, 5) for k in radar_labels.keys()],
+        },
+    }
+
+    print(f"✅ [终极报告] 生成完成: 综合{avg_total}分, 6维雷达图已输出")
+    return report

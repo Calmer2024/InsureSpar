@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InsureSpar 调试控制台</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-primary: #0f0f23;
@@ -783,6 +784,287 @@
             background: rgba(78, 205, 196, 0.15);
             color: var(--accent-green);
         }
+
+        /* ===== 终极评估报告弹窗 ===== */
+        .report-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .report-overlay.hidden {
+            display: none;
+        }
+
+        .report-modal {
+            background: linear-gradient(160deg, #1a1a3a, #0f0f23);
+            border: 1px solid rgba(168, 133, 239, 0.3);
+            border-radius: 20px;
+            padding: 36px;
+            width: 740px;
+            max-width: 94vw;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(168, 133, 239, 0.1);
+        }
+
+        .report-modal::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .report-modal::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .report-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .report-header h2 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .report-close-btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .report-close-btn:hover {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .report-loading {
+            text-align: center;
+            padding: 60px 0;
+        }
+
+        .report-loading .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-purple);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .report-loading p {
+            margin-top: 16px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .report-content {
+            display: none;
+        }
+
+        .report-content.visible {
+            display: block;
+        }
+
+        .report-score-overview {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .report-score-card {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .report-score-card .score-big {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .report-score-card .score-big.high {
+            color: var(--accent-green);
+        }
+
+        .report-score-card .score-big.mid {
+            color: var(--accent-orange);
+        }
+
+        .report-score-card .score-big.low {
+            color: var(--accent-red);
+        }
+
+        .report-score-card .score-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .report-radar-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 28px;
+        }
+
+        .report-radar-section h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .report-radar-canvas {
+            max-height: 320px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .report-review-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+
+        .report-review-section h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: var(--accent-purple);
+        }
+
+        .report-review-text {
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+
+        .report-turns-section h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: var(--text-primary);
+        }
+
+        .report-turn-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .report-turn-badge {
+            background: var(--accent-purple);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+
+        .report-turn-scores {
+            flex: 1;
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+        }
+
+        .report-turn-scores span {
+            color: var(--text-secondary);
+        }
+
+        .report-turn-scores b {
+            color: var(--text-primary);
+            margin-left: 4px;
+        }
+
+        .report-turn-advice {
+            font-size: 12px;
+            color: var(--accent-orange);
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .report-trigger-btn {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            border: none;
+            border-radius: 12px;
+            padding: 14px 32px;
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: block;
+            margin: 12px auto 0;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .report-trigger-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 24px rgba(168, 133, 239, 0.4);
+        }
+
+        .report-trigger-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .report-meta {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .report-meta-tag {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 
@@ -920,6 +1202,36 @@
                 style="margin-top:20px;width:100%;padding:14px;background:linear-gradient(135deg,var(--accent-green),#38b2a0);border:none;border-radius:10px;color:white;font-size:15px;font-weight:700;cursor:pointer;opacity:0.5">
                 🚀 开始自动对战
             </button>
+        </div>
+    </div>
+
+    <!-- 终极评估报告弹窗 -->
+    <div class="report-overlay hidden" id="reportOverlay">
+        <div class="report-modal">
+            <div class="report-header">
+                <h2>📊 终极评估报告</h2>
+                <button class="report-close-btn" onclick="closeReport()">✕ 关闭</button>
+            </div>
+            <div class="report-loading" id="reportLoading">
+                <div class="spinner"></div>
+                <p>🧠 AI 总监正在生成综合评估...</p>
+            </div>
+            <div class="report-content" id="reportContent">
+                <div class="report-meta" id="reportMeta"></div>
+                <div class="report-score-overview" id="reportScores"></div>
+                <div class="report-radar-section">
+                    <h3>🎯 六维能力雷达图</h3>
+                    <canvas id="radarChart" class="report-radar-canvas"></canvas>
+                </div>
+                <div class="report-review-section">
+                    <h3>📝 总监综合点评</h3>
+                    <div class="report-review-text" id="reportReview"></div>
+                </div>
+                <div class="report-turns-section">
+                    <h3>📋 各轮评分明细</h3>
+                    <div id="reportTurns"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1483,6 +1795,13 @@
                         addAutoMsgInline(`🏁 对话结束 — ${data.stage_label}`);
                         document.getElementById('stepBtn').disabled = true;
                         stopAutoTimer();
+                        // 插入"生成终极报告"按钮
+                        const reportBtn = document.createElement('button');
+                        reportBtn.className = 'report-trigger-btn';
+                        reportBtn.id = 'autoReportBtn';
+                        reportBtn.textContent = '📊 生成终极评估报告';
+                        reportBtn.onclick = () => fetchFinalReport(autoSessionId);
+                        document.getElementById('autoChatMessages').appendChild(reportBtn);
                     }
                     scrollAutoChat();
                     break;
@@ -1604,6 +1923,134 @@
         function scrollAutoChat() {
             const el = document.getElementById('autoChatMessages');
             el.scrollTop = el.scrollHeight;
+        }
+
+        // ==========================================
+        // 终极评估报告
+        // ==========================================
+        let reportChartInstance = null;
+
+        async function fetchFinalReport(sid) {
+            const overlay = document.getElementById('reportOverlay');
+            const loading = document.getElementById('reportLoading');
+            const content = document.getElementById('reportContent');
+
+            // 显示弹窗 + 加载态
+            overlay.classList.remove('hidden');
+            loading.style.display = 'block';
+            content.classList.remove('visible');
+
+            try {
+                const res = await fetch(`/api/auto/session/${sid}/final-report`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                renderFinalReport(data);
+            } catch (e) {
+                loading.innerHTML = `<p style="color:var(--accent-red)">\u274c \u62a5\u544a\u751f\u6210\u5931\u8d25: ${e.message}</p>`;
+            }
+        }
+
+        function renderFinalReport(data) {
+            const loading = document.getElementById('reportLoading');
+            const content = document.getElementById('reportContent');
+            loading.style.display = 'none';
+            content.classList.add('visible');
+
+            // Meta 信息
+            document.getElementById('reportMeta').innerHTML = `
+                <span class="report-meta-tag">\ud83c\udfad ${escapeHtml(data.persona_name || '\u672a\u77e5')}</span>
+                <span class="report-meta-tag">\ud83d\udccd ${escapeHtml(data.final_stage || '\u672a\u77e5')}</span>
+                <span class="report-meta-tag">\ud83d\udd04 \u5171 ${data.turn_count || 0} \u8f6e</span>
+                ${data.strategy_id ? `<span class="report-meta-tag">\ud83c\udfaf \u7b56\u7565: ${escapeHtml(data.strategy_id)}</span>` : ''}
+            `;
+
+            // 综合评分
+            const scores = data.avg_scores || {};
+            const scoreCls = (v) => v >= 7 ? 'high' : v >= 4 ? 'mid' : 'low';
+            document.getElementById('reportScores').innerHTML = [
+                { label: '\u7efc\u5408\u603b\u5206', value: scores.total },
+                { label: '\u4e13\u4e1a\u6027', value: scores.professionalism },
+                { label: '\u5408\u89c4\u6027', value: scores.compliance },
+                { label: '\u7b56\u7565\u6027', value: scores.strategy },
+            ].map(s => `
+                <div class="report-score-card">
+                    <div class="score-big ${scoreCls(s.value)}">${s.value ?? '-'}</div>
+                    <div class="score-name">${s.label}</div>
+                </div>
+            `).join('');
+
+            // 雷达图
+            if (reportChartInstance) { reportChartInstance.destroy(); reportChartInstance = null; }
+            const radar = data.radar || {};
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            reportChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: radar.labels || [],
+                    datasets: [{
+                        label: '\u80fd\u529b\u8bc4\u5206',
+                        data: radar.scores || [],
+                        backgroundColor: 'rgba(168, 133, 239, 0.2)',
+                        borderColor: 'rgba(168, 133, 239, 0.8)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(168, 133, 239, 1)',
+                        pointBorderColor: '#fff',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 10,
+                            ticks: {
+                                stepSize: 2,
+                                color: 'rgba(144,144,176,0.6)',
+                                backdropColor: 'transparent',
+                                font: { size: 11 },
+                            },
+                            grid: { color: 'rgba(144,144,176,0.15)' },
+                            angleLines: { color: 'rgba(144,144,176,0.15)' },
+                            pointLabels: {
+                                color: '#e8e8f0',
+                                font: { size: 13, weight: '600' },
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                    },
+                }
+            });
+
+            // 总监点评
+            document.getElementById('reportReview').textContent = data.review || '\u6682\u65e0\u70b9\u8bc4';
+
+            // 逐轮评分
+            document.getElementById('reportTurns').innerHTML = (data.per_turn_scores || []).map(t => `
+                <div class="report-turn-card">
+                    <span class="report-turn-badge">\u7b2c ${t.turn} \u8f6e</span>
+                    <div class="report-turn-scores">
+                        <span>\u4e13\u4e1a <b>${t.professionalism}</b></span>
+                        <span>\u5408\u89c4 <b>${t.compliance}</b></span>
+                        <span>\u7b56\u7565 <b>${t.strategy}</b></span>
+                    </div>
+                    <div class="report-turn-advice" title="${escapeHtml(t.advice || '')}">\ud83d\udca1 ${escapeHtml(t.advice || '-')}</div>
+                </div>
+            `).join('');
+        }
+
+        function closeReport() {
+            document.getElementById('reportOverlay').classList.add('hidden');
+            if (reportChartInstance) { reportChartInstance.destroy(); reportChartInstance = null; }
+            // 重置加载态以便下次使用
+            document.getElementById('reportLoading').style.display = 'block';
+            document.getElementById('reportLoading').innerHTML = '<div class="spinner"></div><p>\ud83e\udde0 AI \u603b\u76d1\u6b63\u5728\u751f\u6210\u7efc\u5408\u8bc4\u4f30...</p>';
+            document.getElementById('reportContent').classList.remove('visible');
         }
     </script>
 </body>

@@ -11,7 +11,7 @@ from app.core.config import PERSONAS, SALES_STRATEGIES, DECISION_STRIKES_REQUIRE
 from app.services.session_manager import session_manager
 from app.agents.sales_agent import sales_agent_step
 from app.agents.customer_graph import customer_graph
-from app.agents.evaluator import evaluate_turn
+from app.agents.evaluator import evaluate_turn, generate_final_report
 from app.agents.state import DialogueStage
 
 router = APIRouter(prefix="/api/auto", tags=["Auto-Agent 自动对战"])
@@ -325,6 +325,28 @@ async def get_auto_status(session_id: str):
         "conversation_history": session.conversation_history,
         "evaluations": evaluations,
     }
+
+
+# ==========================================
+# 终极评估报告
+# ==========================================
+@router.get("/session/{session_id}/final-report")
+async def get_final_report(session_id: str):
+    """生成终极评估报告：汇总评分 + LLM总监点评 + 6维雷达图"""
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"会话 '{session_id}' 不存在")
+
+    report = await generate_final_report(
+        session_id=session_id,
+        persona_id=session.persona_id,
+        conversation_history=session.conversation_history,
+        evaluations=session.evaluations,
+        final_stage=session.current_stage,
+        turn_count=session.turn_count,
+        strategy_id=session.strategy_id,
+    )
+    return report
 
 
 # ==========================================
