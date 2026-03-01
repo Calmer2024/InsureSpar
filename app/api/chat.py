@@ -1,6 +1,9 @@
 # 文件：app/api/chat.py
-"""聊天 API 路由 — 会话管理 + 对话交互 + 评分查询"""
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+"""聊天 API 路由 — 会话管理 + 对话交互 + 评分查询 + SSE流式输出"""
+import json
+import asyncio
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 
 from app.schemas.chat_schema import (
@@ -210,3 +213,191 @@ async def list_personas():
         }
         for p in PERSONAS.values()
     ]
+
+
+# ==========================================
+# 6. SSE 流式聊天接口
+# ==========================================
+STAGE_LABELS = {
+    DialogueStage.INTRODUCTION: "💬 破冰与探寻",
+    DialogueStage.OBJECTION: "⚡ 异议处理",
+    DialogueStage.DECISION_SIGN: "✅ 签单成功",
+    DialogueStage.DECISION_REJECT: "❌ 客户拒绝",
+}
+
+
+@router.post("/chat/stream")
+async def stream_chat(request: ChatSendRequest):
+    """SSE 流式对话：实时推送对话管理、客户回复(逐token)、工具调用等内部事件"""
+    session = session_manager.get_session(request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"会话 '{request.session_id}' 不存在")
+    if session.is_finished:
+        raise HTTPException(status_code=400, detail="此会话已结束，请创建新会话")
+
+    async def event_generator():
+        """SSE 事件生成器"""
+        initial_state = {
+            "messages": [HumanMessage(content=request.message)],
+            "current_stage": session.current_stage,
+            "turn_count": session.turn_count,
+            "persona_id": session.persona_id,
+            "tool_calls_log": [],
+            "force_objection": False,
+        }
+        config = {"configurable": {"thread_id": session.session_id}}
+
+        customer_reply = ""
+        current_stage = session.current_stage
+        turn_count = session.turn_count
+        tool_logs = []
+        force_triggered = False
+        dm_finished = False  # 对话管理器是否已结束
+
+        try:
+            async for event in customer_graph.astream_events(
+                initial_state, config=config, version="v2"
+            ):
+                kind = event.get("event", "")
+                name = event.get("name", "")
+                data = event.get("data", {})
+                tags = event.get("tags", [])
+                metadata = event.get("metadata", {})
+                langgraph_node = metadata.get("langgraph_node", "")
+
+                # === 节点开始 ===
+                if kind == "on_chain_start" and name == "dialogue_manager":
+                    yield _sse({"type": "status", "content": "🚦 对话管理器正在分析状态..."})
+
+                elif kind == "on_chain_start" and name == "customer":
+                    yield _sse({"type": "status", "content": "👤 客户正在思考..."})
+
+                elif kind == "on_chain_start" and name == "tools":
+                    yield _sse({"type": "status", "content": "🔧 正在调用工具..."})
+
+                # === 节点结束 → 获取状态更新 ===
+                elif kind == "on_chain_end" and name == "dialogue_manager":
+                    dm_finished = True
+                    output = data.get("output", {})
+                    if isinstance(output, dict):
+                        turn_count = output.get("turn_count", turn_count)
+                        current_stage = output.get("current_stage", current_stage)
+                        force_triggered = output.get("force_objection", False)
+                        label = STAGE_LABELS.get(current_stage, current_stage)
+                        yield _sse({
+                            "type": "stage_update",
+                            "stage": current_stage,
+                            "stage_label": label,
+                            "turn_count": turn_count,
+                        })
+                        if force_triggered:
+                            yield _sse({
+                                "type": "force_guard",
+                                "content": f"🛡️ 强制≥5轮防线触发！第{turn_count}轮不允许进入决策，强制拖回异议处理。"
+                            })
+
+                # === 工具执行结果 ===
+                elif kind == "on_chain_end" and name == "tools":
+                    output = data.get("output", {})
+                    messages = output.get("messages", []) if isinstance(output, dict) else []
+                    for msg in messages:
+                        if hasattr(msg, "content") and hasattr(msg, "name"):
+                            tool_name = getattr(msg, "name", "unknown")
+                            tool_content = msg.content if isinstance(msg.content, str) else str(msg.content)
+                            tool_logs.append({"tool": tool_name, "result": tool_content[:300]})
+                            yield _sse({
+                                "type": "tool_result",
+                                "tool": tool_name,
+                                "content": tool_content[:500],
+                            })
+
+                # === 客户节点结束 → 提取完整回复（作为最终回退）===
+                elif kind == "on_chain_end" and name == "customer":
+                    output = data.get("output", {})
+                    if isinstance(output, dict):
+                        msgs = output.get("messages", [])
+                        for msg in msgs:
+                            if hasattr(msg, "content") and msg.content and hasattr(msg, "type") and msg.type == "ai":
+                                if not customer_reply:
+                                    # token流没捕获到，用完整回复作为回退
+                                    customer_reply = msg.content
+                                    yield _sse({"type": "token", "content": msg.content})
+
+                # === 客户 LLM 逐 Token 流式输出 ===
+                elif kind == "on_chat_model_stream":
+                    chunk = data.get("chunk")
+                    # 使用 langgraph_node 判断来源（最可靠），或用 dm_finished 状态判断
+                    is_customer_node = langgraph_node == "customer" or (dm_finished and langgraph_node != "dialogue_manager")
+                    if chunk and hasattr(chunk, "content") and chunk.content and is_customer_node:
+                        customer_reply += chunk.content
+                        yield _sse({"type": "token", "content": chunk.content})
+                    # 捕获工具调用请求
+                    if chunk and hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks and is_customer_node:
+                        for tc in chunk.tool_call_chunks:
+                            if tc.get("name"):
+                                tool_logs.append({"tool": tc["name"], "result": "调用中..."})
+                                yield _sse({
+                                    "type": "tool_call",
+                                    "tool": tc["name"],
+                                    "args": tc.get("args", ""),
+                                })
+
+        except Exception as e:
+            yield _sse({"type": "error", "content": f"系统错误: {str(e)}"})
+
+        # === 最终结果 ===
+        is_finished = current_stage in [DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT]
+        session_manager.update_session(
+            session.session_id,
+            turn_count=turn_count,
+            current_stage=current_stage,
+            is_finished=is_finished,
+        )
+
+        yield _sse({
+            "type": "done",
+            "customer_reply": customer_reply,
+            "current_stage": current_stage,
+            "stage_label": STAGE_LABELS.get(current_stage, current_stage),
+            "turn_count": turn_count,
+            "is_finished": is_finished,
+            "tool_calls_log": tool_logs,
+        })
+
+        # 后台异步评分
+        asyncio.create_task(evaluate_turn(
+            session_id=session.session_id,
+            turn_count=turn_count,
+            sales_msg=request.message,
+            customer_reply=customer_reply,
+            persona_id=session.persona_id,
+        ))
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _sse(data: dict) -> str:
+    """格式化 SSE 事件"""
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+# ==========================================
+# 7. 评分轮询（前端用来实时拉取最新评分）
+# ==========================================
+@router.get("/session/{session_id}/evaluation/latest")
+async def get_latest_evaluation(session_id: str, turn: int = 0):
+    """获取指定会话中指定轮次之后的新评分（前端轮询用）"""
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"会话 '{session_id}' 不存在")
+
+    new_evals = [
+        e for e in session.evaluations
+        if e.get("turn", 0) > turn and e.get("professionalism_score", -1) >= 0
+    ]
+    return {"session_id": session_id, "new_evaluations": new_evals}
+

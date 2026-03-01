@@ -18,20 +18,18 @@ app = FastAPI(
 app.include_router(chat_router)
 
 
-# 首页
+# 调试前端
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    return """
-    <html>
-    <head><title>InsureSpar</title></head>
-    <body style="font-family: sans-serif; text-align: center; padding-top: 80px; background: #f4f4f9;">
-        <h1>🎭 InsureSpar 保险销售对练系统</h1>
-        <p>请访问 <a href="/docs">/docs</a> 使用 Swagger UI 进行调试</p>
-    </body>
-    </html>
-    """
+    """访问根目录时，返回调试前端页面"""
+    try:
+        with open("static/index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "<h1>InsureSpar</h1><p>前端文件未找到，请访问 <a href='/docs'>/docs</a></p>"
 
 
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "2.0.0"}
+
