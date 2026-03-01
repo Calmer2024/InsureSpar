@@ -202,7 +202,7 @@ def dialogue_manager_node(state: AgentState) -> dict:
     is_decision = detected_stage in [
         DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
         DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
-    ]
+    ] 
     if is_decision and turn_count < MIN_TURNS_BEFORE_DECISION:
         print(f"🛡️ [防线触发] 第 {turn_count} 轮就想进入决策？强制拖回 OBJECTION！(需要至少 {MIN_TURNS_BEFORE_DECISION} 轮)")
         detected_stage = DialogueStage.OBJECTION
