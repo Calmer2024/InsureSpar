@@ -12,6 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "data"
 
 # ==========================================
+# 数据库配置
+# ==========================================
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:95515@localhost:3306/insurespar")
+
+# ==========================================
 # LLM 配置
 # ==========================================
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")

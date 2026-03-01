@@ -346,6 +346,11 @@ async def get_final_report(session_id: str):
         turn_count=session.turn_count,
         strategy_id=session.strategy_id,
     )
+    
+    # 持久化到数据库
+    if "error" not in report:
+        session_manager.save_final_report(session_id, report)
+        
     return report
 
 
