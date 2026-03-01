@@ -190,8 +190,13 @@ async def _parse_premium_params(details: str) -> dict | None:
         prompt = f"""从以下描述中提取保费查询参数，严格输出 JSON：
 "{details}"
 
+特别规则：
+1. 重疾险常规保额一般在 10万~100万之间（如 300000 或 500000）。
+2. 如果销售话术或记录中没有明确提到保额金额，请默认填入 500000 (50万) 以保证工具能运行测试。
+3. base_amount 必须是数字格式。
+
 输出格式：
-{{"age": 45, "gender": "男", "pay_period": 20, "base_amount": 100000}}"""
+{{"age": 45, "gender": "男", "pay_period": 20, "base_amount": 500000}}"""
 
         structured = evaluator_llm.with_structured_output(PremiumParams, method="json_mode")
         result = structured.invoke(prompt)
@@ -208,8 +213,13 @@ async def _parse_cash_value_params(details: str) -> dict | None:
         prompt = f"""从以下描述中提取现金价值查询参数，严格输出 JSON：
 "{details}"
 
+特别规则：
+1. 重疾险常规保额一般在 10万~100万之间（如 300000 或 500000）。
+2. 如果销售话术或记录中没有明确提到保额金额，请默认填入 500000 (50万) 以保证工具能运行测试。
+3. base_amount 必须是数字格式。
+
 输出格式：
-{{"gender": "男", "age": 45, "pay_period": 20, "year": 10, "base_amount": 100000}}"""
+{{"gender": "男", "age": 45, "pay_period": 20, "year": 10, "base_amount": 500000}}"""
 
         structured = evaluator_llm.with_structured_output(CashValueParams, method="json_mode")
         result = structured.invoke(prompt)
@@ -259,7 +269,7 @@ async def evaluate_turn(
 
 【判卷标准（务必结合下方事实核查报告！）】
 1. 专业性 (0-10分)：
-   - 如果「事实核查报告」显示销售报价/声明与实际数据不符，专业性最高不超过3分！
+   - 如果「事实核查报告」显示销售报价/声明与实际数据严重不符，专业性最高不超过5分（细微出入可以接受）！
    - 如果销售曲解了保险条款或规则，专业性最高不超过2分！
    - 如果销售的说法与工具核查结果一致，给予肯定。
 2. 合规性 (0-10分)：

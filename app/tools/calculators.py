@@ -19,14 +19,14 @@ except Exception as e:
 # 工具 1：保费费率查询
 # ==========================================
 @tool
-def query_premium_rate(age: int, gender: str, pay_period: int, base_amount: int = 10000) -> str:
+def query_premium_rate(age: int, gender: str, pay_period: int, base_amount: int = 500000) -> str:
     """
     当需要查阅"每年交多少钱保费"时调用此工具。
     参数:
         age (int): 投保年龄 (0-70)
         gender (str): 性别 ('男' 或 '女')
         pay_period (int): 交费期，可选: 1(趸交), 3, 5, 10, 15, 20, 25, 30
-        base_amount (int): 基本保额，默认 10000
+        base_amount (int): 基本保额，代表客户最终能赔多少钱。重疾险通常至少300000(30万)，默认500000(50万)。
     返回:
         精准保费金额或拒保提示。
     """
@@ -73,7 +73,7 @@ def query_premium_rate(age: int, gender: str, pay_period: int, base_amount: int 
 # 工具 2：现金价值拟合查询
 # ==========================================
 @tool
-def query_cash_value(gender: str, age: int, pay_period: int, year: int, base_amount: int = 10000) -> str:
+def query_cash_value(gender: str, age: int, pay_period: int, year: int, base_amount: int = 500000) -> str:
     """
     当关心"中途退保能拿回多少钱"、"老了以后账户里有多少钱"时，查询特定年度的现金价值。
     参数:
@@ -81,7 +81,7 @@ def query_cash_value(gender: str, age: int, pay_period: int, year: int, base_amo
         age (int): 投保时年龄 (0-70)
         pay_period (int): 交费期 (1, 3, 5, 10, 15, 20, 25, 30)
         year (int): 保单年度，如第15年退保填15
-        base_amount (int): 基本保额，默认 10000
+        base_amount (int): 基本保额，代表客户最终能赔多少钱。重疾险通常至少300000(30万)，默认500000(50万)。
     返回:
         该年度末的预估现金价值。
     """
