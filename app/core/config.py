@@ -37,10 +37,27 @@ def load_personas() -> dict:
     return {p["persona_id"]: p for p in personas_list}
 
 
+def load_sales_strategies() -> dict:
+    """从 data/sales_strategies.json 加载所有销售策略，返回 {strategy_id: strategy_dict}"""
+    path = DATA_DIR / "sales_strategies.json"
+    if not path.exists():
+        print(f"⚠️ 销售策略配置文件不存在: {path}")
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        strategies_list = json.load(f)
+    return {s["strategy_id"]: s for s in strategies_list}
+
+
 # 启动时一次性加载到内存
 PERSONAS = load_personas()
+SALES_STRATEGIES = load_sales_strategies()
 
 if PERSONAS:
     print(f"✅ 客户画像加载完成！共 {len(PERSONAS)} 个画像: {', '.join(PERSONAS.keys())}")
 else:
     print("⚠️ 未加载到任何客户画像配置")
+
+if SALES_STRATEGIES:
+    print(f"✅ 销售策略加载完成！共 {len(SALES_STRATEGIES)} 种策略: {', '.join(SALES_STRATEGIES.keys())}")
+else:
+    print("⚠️ 未加载到任何销售策略配置")

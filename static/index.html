@@ -600,6 +600,189 @@
             background: rgba(78, 205, 196, 0.2);
             color: var(--accent-green);
         }
+
+        /* ===== 模式切换按钮 ===== */
+        .mode-switch {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-input);
+            border-radius: 8px;
+            padding: 3px;
+        }
+
+        .mode-btn {
+            padding: 5px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        /* ===== 自动对战面板 ===== */
+        .auto-panel {
+            display: none;
+            height: calc(100vh - 52px);
+            flex-direction: column;
+        }
+
+        .auto-panel.visible {
+            display: flex;
+        }
+
+        .manual-panel {
+            display: flex;
+        }
+
+        .manual-panel.hidden {
+            display: none;
+        }
+
+        /* 自动对战双栏 */
+        .auto-layout {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .auto-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+        }
+
+        .auto-side {
+            width: 420px;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            overflow: hidden;
+        }
+
+        /* 自动控制栏 */
+        .auto-controls {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-btn {
+            background: linear-gradient(135deg, var(--accent-green), #38b2a0);
+            border: none;
+            border-radius: 10px;
+            padding: 11px 28px;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .step-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.03);
+        }
+
+        .step-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auto-tick-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .auto-timer-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .auto-timer-toggle.active {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .auto-timer-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* 销售消息气泡（绿色） */
+        .msg.auto-sales {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #1e5c3a, #2a7a52);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg.auto-sales .label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 策略选择弹窗 */
+        .strategy-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .strategy-card:hover {
+            border-color: var(--accent-green);
+        }
+
+        .strategy-card h3 {
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .strategy-card p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .strategy-card .tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .strategy-tag {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(78, 205, 196, 0.15);
+            color: var(--accent-green);
+        }
     </style>
 </head>
 
@@ -608,17 +791,23 @@
     <!-- 顶部栏 -->
     <div class="top-bar">
         <div class="logo">🎭 InsureSpar Debug Console</div>
-        <div class="status-bar">
-            <div class="status-item"><span class="status-dot green" id="statusDot"></span><span
-                    id="statusText">就绪</span></div>
-            <div class="status-item">🔄 回合 <b id="turnDisplay">0</b></div>
-            <div class="status-item" id="stageDisplay">📍 等待启动</div>
-            <div class="status-item" id="sessionDisplay">🆔 --</div>
+        <div style="display:flex;align-items:center;gap:20px;">
+            <div class="mode-switch">
+                <button class="mode-btn active" id="btnManualMode" onclick="switchMode('manual')">🧑 手动对练</button>
+                <button class="mode-btn" id="btnAutoMode" onclick="switchMode('auto')">🤖 自动对战</button>
+            </div>
+            <div class="status-bar">
+                <div class="status-item"><span class="status-dot green" id="statusDot"></span><span
+                        id="statusText">就绪</span></div>
+                <div class="status-item">🔄 回合 <b id="turnDisplay">0</b></div>
+                <div class="status-item" id="stageDisplay">📍 等待启动</div>
+                <div class="status-item" id="sessionDisplay">🆔 --</div>
+            </div>
         </div>
     </div>
 
-    <!-- 主布局 -->
-    <div class="main-layout">
+    <!-- 手动对练面板 -->
+    <div class="main-layout manual-panel" id="manualPanel">
         <!-- 左：对话 -->
         <div class="chat-panel">
             <div class="chat-header">
@@ -645,7 +834,7 @@
             <div class="monitor-content">
                 <div class="tab-pane active" id="tab-logs"></div>
                 <div class="tab-pane" id="tab-evals">
-                    <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding-top: 40px;"
+                    <div style="color:var(--text-muted);font-size:13px;text-align:center;padding-top:40px"
                         id="evalPlaceholder">
                         等待考官评分（后台异步进行中...）
                     </div>
@@ -654,12 +843,83 @@
         </div>
     </div>
 
-    <!-- 画像选择弹窗 -->
+    <!-- Auto对战面板 -->
+    <div class="auto-panel" id="autoPanel">
+        <div class="auto-layout">
+            <!-- 左：双方对话 -->
+            <div class="auto-chat">
+                <div class="chat-header">
+                    <h2 id="autoChatTitle">🤖 自动对战</h2>
+                    <div class="sub" id="autoChatSub">选择客户与销售策略，开始自动对战</div>
+                </div>
+                <div class="chat-messages" id="autoChatMessages"></div>
+                <div class="auto-controls">
+                    <button class="step-btn" id="stepBtn" onclick="autoStep()" disabled>▶ 下一步</button>
+                    <div class="auto-timer-toggle" id="timerToggle" onclick="toggleAutoTimer()">
+                        <span class="auto-timer-dot"></span> 自动推进
+                    </div>
+                    <span class="auto-tick-label" id="autoTickLabel"></span>
+                    <span style="flex:1"></span>
+                    <button onclick="showAutoSetup()"
+                        style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--text-secondary);cursor:pointer;font-size:12px">⚙️
+                        重新配置</button>
+                </div>
+            </div>
+
+            <!-- 右：监控 -->
+            <div class="auto-side">
+                <div class="monitor-header">
+                    <h2>🖥️ 自动对战日志</h2>
+                </div>
+                <div class="monitor-tabs">
+                    <div class="monitor-tab active" onclick="switchAutoTab('auto-logs')">📋 实时日志</div>
+                    <div class="monitor-tab" onclick="switchAutoTab('auto-evals')">⚖️ 考官评分</div>
+                </div>
+                <div class="monitor-content">
+                    <div class="tab-pane active" id="auto-logs"></div>
+                    <div class="tab-pane" id="auto-evals">
+                        <div style="color:var(--text-muted);font-size:13px;text-align:center;padding-top:40px"
+                            id="autoEvalPlaceholder">
+                            等待考官评分...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 画像选择弹窗（手动模式） -->
     <div class="overlay" id="personaOverlay">
         <div class="persona-modal">
             <h2>🎭 选择客户画像</h2>
             <div class="sub">选择一位虚拟客户，开始保险销售对练</div>
             <div id="personaList"></div>
+        </div>
+    </div>
+
+    <!-- Auto对战配置弹窗 -->
+    <div class="overlay hidden" id="autoSetupOverlay">
+        <div class="persona-modal" style="width:620px">
+            <h2>🤖 配置自动对战</h2>
+            <div class="sub">选择客户画像 + 销售策略，系统将全自动完成对话并评分</div>
+
+            <div style="display:flex;gap:20px">
+                <!-- 画像选择 -->
+                <div style="flex:1">
+                    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">1️⃣ 选择客户</p>
+                    <div id="autoPersonaList"></div>
+                </div>
+                <!-- 策略选择 -->
+                <div style="flex:1">
+                    <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">2️⃣ 选择销售策略</p>
+                    <div id="strategyList"></div>
+                </div>
+            </div>
+
+            <button id="startAutoBtn" onclick="startAutoSession()" disabled
+                style="margin-top:20px;width:100%;padding:14px;background:linear-gradient(135deg,var(--accent-green),#38b2a0);border:none;border-radius:10px;color:white;font-size:15px;font-weight:700;cursor:pointer;opacity:0.5">
+                🚀 开始自动对战
+            </button>
         </div>
     </div>
 
@@ -989,6 +1249,359 @@
 
         // 启动
         init();
+
+        // ==========================================
+        // 模式切换
+        // ==========================================
+        function switchMode(mode) {
+            const manual = document.getElementById('manualPanel');
+            const auto = document.getElementById('autoPanel');
+            document.getElementById('btnManualMode').classList.toggle('active', mode === 'manual');
+            document.getElementById('btnAutoMode').classList.toggle('active', mode === 'auto');
+            if (mode === 'auto') {
+                manual.classList.add('hidden');
+                auto.classList.add('visible');
+                if (!autoSessionId) showAutoSetup();
+            } else {
+                manual.classList.remove('hidden');
+                auto.classList.remove('visible');
+            }
+        }
+
+        // ==========================================
+        // Auto 模式全局状态
+        // ==========================================
+        let autoSessionId = null;
+        let autoPersonaId = null;
+        let autoStrategyId = null;
+        let autoTimerInterval = null;
+        let autoStepping = false;
+        let autoLastPolledTurn = 0;
+        let autoRenderedTurns = new Set();
+        let autoIsPolling = false;
+        let autoEvalTimer = null;
+
+        // ==========================================
+        // 显示配置弹窗并加载策略
+        // ==========================================
+        async function showAutoSetup() {
+            document.getElementById('autoSetupOverlay').classList.remove('hidden');
+            autoPersonaId = null; autoStrategyId = null;
+            document.getElementById('startAutoBtn').disabled = true;
+            document.getElementById('startAutoBtn').style.opacity = '0.5';
+
+            // 加载画像（复用已加载的）
+            const personaContainer = document.getElementById('autoPersonaList');
+            personaContainer.innerHTML = '';
+            const res = await fetch('/api/personas');
+            const personas = await res.json();
+            const avatars = { hard: '👔', medium: '💻', easy: '👩' };
+            personas.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'strategy-card';
+                card.id = `ap-${p.persona_id}`;
+                card.onclick = () => selectAutoPersona(p.persona_id);
+                card.innerHTML = `<h3>${avatars[p.difficulty] || '🧑'} ${p.name}</h3>
+                    <p>${p.description}</p>
+                    <div class="tags"><span class="strategy-tag">${p.difficulty}</span></div>`;
+                personaContainer.appendChild(card);
+            });
+
+            // 加载策略
+            const stratContainer = document.getElementById('strategyList');
+            stratContainer.innerHTML = '';
+            const sres = await fetch('/api/auto/strategies');
+            const strategies = await sres.json();
+            strategies.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'strategy-card';
+                card.id = `as-${s.strategy_id}`;
+                card.onclick = () => selectAutoStrategy(s.strategy_id);
+                card.innerHTML = `<h3>${s.name}</h3><p>${s.description}</p>
+                    <div class="tags">
+                        <span class="strategy-tag">💪 ${s.strengths.substring(0, 15)}...</span>
+                    </div>`;
+                stratContainer.appendChild(card);
+            });
+        }
+
+        function selectAutoPersona(id) {
+            autoPersonaId = id;
+            document.querySelectorAll('[id^="ap-"]').forEach(c => c.style.borderColor = '');
+            const el = document.getElementById(`ap-${id}`);
+            if (el) el.style.borderColor = 'var(--accent-green)';
+            checkAutoReady();
+        }
+        function selectAutoStrategy(id) {
+            autoStrategyId = id;
+            document.querySelectorAll('[id^="as-"]').forEach(c => c.style.borderColor = '');
+            const el = document.getElementById(`as-${id}`);
+            if (el) el.style.borderColor = 'var(--accent-green)';
+            checkAutoReady();
+        }
+        function checkAutoReady() {
+            const ready = autoPersonaId && autoStrategyId;
+            document.getElementById('startAutoBtn').disabled = !ready;
+            document.getElementById('startAutoBtn').style.opacity = ready ? '1' : '0.5';
+        }
+
+        // ==========================================
+        // 创建 Auto 会话
+        // ==========================================
+        async function startAutoSession() {
+            if (!autoPersonaId || !autoStrategyId) return;
+            try {
+                const res = await fetch('/api/auto/session/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ persona_id: autoPersonaId, strategy_id: autoStrategyId }),
+                });
+                const data = await res.json();
+                autoSessionId = data.session_id;
+                document.getElementById('autoSetupOverlay').classList.add('hidden');
+                document.getElementById('autoChatTitle').textContent = `🤖 ${data.persona_name} × ${data.strategy_name}`;
+                document.getElementById('autoChatSub').textContent = `${data.persona_description} | ${data.strategy_description}`;
+                document.getElementById('sessionDisplay').textContent = `🆔 ${autoSessionId}`;
+                document.getElementById('stepBtn').disabled = false;
+                document.getElementById('autoChatMessages').innerHTML = '';
+                document.getElementById('auto-logs').innerHTML = '';
+                document.getElementById('auto-evals').innerHTML = `<div style="color:var(--text-muted);font-size:13px;text-align:center;padding-top:40px" id="autoEvalPlaceholder">等待考官评分...</div>`;
+                autoLastPolledTurn = 0; autoRenderedTurns.clear(); autoIsPolling = false;
+                addAutoLog('status', `✅ 会话创建成功: ${autoSessionId} | 画像: ${data.persona_name} | 策略: ${data.strategy_name}`);
+                // 开始评分轮询
+                if (autoEvalTimer) clearInterval(autoEvalTimer);
+                autoEvalTimer = setInterval(pollAutoEvaluations, 3500);
+            } catch (e) {
+                addAutoLog('error', `创建会话失败: ${e.message}`);
+            }
+        }
+
+        // ==========================================
+        // 推进一步（核心）
+        // ==========================================
+        async function autoStep() {
+            if (!autoSessionId || autoStepping) return;
+            autoStepping = true;
+            document.getElementById('stepBtn').disabled = true;
+            setStatus('processing', '自动推进中...');
+
+            // 创建销售气泡（待填充）
+            const saleDiv = createAutoSalesMsgContainer();
+            const custDiv = createAutoCustomerMsgContainer();
+
+            try {
+                const resp = await fetch('/api/auto/step', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: autoSessionId }),
+                });
+
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buf = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buf += decoder.decode(value, { stream: true });
+                    const events = buf.split('\n\n');
+                    buf = events.pop();
+                    for (const ev of events) {
+                        if (!ev.startsWith('data: ')) continue;
+                        try {
+                            handleAutoSSE(JSON.parse(ev.substring(6)), saleDiv, custDiv);
+                        } catch (_) { }
+                    }
+                }
+            } catch (e) {
+                addAutoLog('error', `推进失败: ${e.message}`);
+            } finally {
+                autoStepping = false;
+                document.getElementById('stepBtn').disabled = false;
+                setStatus('ready', '就绪');
+            }
+        }
+
+        function handleAutoSSE(data, saleDiv, custDiv) {
+            const saleContent = saleDiv.querySelector('.content');
+            const custContent = custDiv.querySelector('.content');
+            const saleTyping = saleDiv.querySelector('.typing-indicator');
+            const custTyping = custDiv.querySelector('.typing-indicator');
+
+            switch (data.type) {
+                case 'phase':
+                    addAutoLog('status', data.content);
+                    setStatus('processing', data.content);
+                    break;
+                case 'sales_thinking':
+                    addAutoLog('status', data.content);
+                    break;
+                case 'sales_tool_call':
+                    addAutoLog('tool-call', `🔧 销售调工具: ${data.tool}(${data.args})`);
+                    break;
+                case 'sales_tool_result':
+                    addAutoLog('tool-result', `📦 ${data.tool}: ${data.content.substring(0, 200)}...`);
+                    break;
+                case 'sales_token':
+                    if (saleTyping) saleTyping.remove();
+                    saleContent.textContent += data.content;
+                    scrollAutoChat();
+                    break;
+                case 'sales_message_done':
+                    if (saleTyping) saleTyping.remove();
+                    if (!saleContent.textContent && data.content)
+                        saleContent.textContent = data.content;
+                    break;
+                case 'customer_status':
+                    addAutoLog('status', data.content);
+                    break;
+                case 'stage_update':
+                    document.getElementById('turnDisplay').textContent = data.turn_count;
+                    document.getElementById('stageDisplay').textContent = `📍 ${data.stage_label}`;
+                    addAutoLog('stage', `阶段 → ${data.stage_label} (第${data.turn_count}轮)`);
+                    break;
+                case 'force_guard':
+                    addAutoLog('guard', data.content);
+                    break;
+                case 'customer_tool_result':
+                    addAutoLog('tool-result', `📦 客户端 ${data.tool}: ${data.content.substring(0, 200)}...`);
+                    break;
+                case 'customer_token':
+                    if (custTyping) custTyping.remove();
+                    custContent.textContent += data.content;
+                    scrollAutoChat();
+                    break;
+                case 'step_done':
+                    if (custTyping) custTyping.remove();
+                    if (!custContent.textContent && data.customer_reply)
+                        custContent.textContent = data.customer_reply;
+                    addAutoLog('status', `✅ 本步完成 | ${data.stage_label} | 第${data.turn_count}轮`);
+                    if (data.is_finished) {
+                        addAutoMsgInline(`🏁 对话结束 — ${data.stage_label}`);
+                        document.getElementById('stepBtn').disabled = true;
+                        stopAutoTimer();
+                    }
+                    scrollAutoChat();
+                    break;
+                case 'error':
+                    addAutoLog('error', data.content);
+                    break;
+            }
+        }
+
+        // ==========================================
+        // 自动推进计时器
+        // ==========================================
+        function toggleAutoTimer() {
+            const btn = document.getElementById('timerToggle');
+            if (autoTimerInterval) {
+                stopAutoTimer();
+            } else {
+                btn.classList.add('active');
+                document.getElementById('autoTickLabel').textContent = '已开启 (每6秒)';
+                autoTimerInterval = setInterval(() => {
+                    if (!autoStepping && autoSessionId) autoStep();
+                }, 6000);
+            }
+        }
+        function stopAutoTimer() {
+            if (autoTimerInterval) clearInterval(autoTimerInterval);
+            autoTimerInterval = null;
+            document.getElementById('timerToggle').classList.remove('active');
+            document.getElementById('autoTickLabel').textContent = '';
+        }
+
+        // ==========================================
+        // Auto 评分轮询
+        // ==========================================
+        async function pollAutoEvaluations() {
+            if (!autoSessionId || autoIsPolling) return;
+            autoIsPolling = true;
+            try {
+                const res = await fetch(`/api/session/${autoSessionId}/evaluation/latest?turn=${autoLastPolledTurn}`);
+                const data = await res.json();
+                if (data.new_evaluations?.length > 0) {
+                    for (const ev of data.new_evaluations) {
+                        if (autoRenderedTurns.has(ev.turn)) continue;
+                        autoRenderedTurns.add(ev.turn);
+                        renderAutoEvalCard(ev);
+                        autoLastPolledTurn = Math.max(autoLastPolledTurn, ev.turn);
+                    }
+                    document.getElementById('autoEvalPlaceholder')?.remove();
+                }
+            } catch (_) { }
+            finally { autoIsPolling = false; }
+        }
+
+        function renderAutoEvalCard(ev) {
+            const c = document.getElementById('auto-evals');
+            const card = document.createElement('div');
+            card.className = 'eval-card';
+            const bar = (label, score) => {
+                const pct = score * 10, cls = score >= 7 ? 'high' : score >= 4 ? 'mid' : 'low';
+                return `<div class="score-row"><span class="score-label">${label}</span><div class="score-bar-bg"><div class="score-bar ${cls}" style="width:${pct}%"></div></div><span class="score-value">${score}/10</span></div>`;
+            };
+            card.innerHTML = `<span class="turn-badge">第 ${ev.turn} 轮</span>
+                ${bar('专业性', ev.professionalism_score)}
+                ${bar('合规性', ev.compliance_score)}
+                ${bar('策略性', ev.strategy_score)}
+                <div class="eval-comment"><b>💊</b> ${ev.professionalism_comment}<br><b>⚖️</b> ${ev.compliance_comment}<br><b>🎯</b> ${ev.strategy_comment}</div>
+                <div class="eval-advice">💡 ${ev.overall_advice}</div>`;
+            c.insertBefore(card, c.firstChild);
+            // 切到评分Tab闪烁
+            const tabs = document.querySelectorAll('#autoPanel .monitor-tab');
+            tabs[1].style.color = 'var(--accent-orange)';
+            setTimeout(() => { tabs[1].style.color = ''; }, 2000);
+        }
+
+        // ==========================================
+        // Auto UI 辅助函数
+        // ==========================================
+        function createAutoSalesMsgContainer() {
+            const c = document.getElementById('autoChatMessages');
+            const div = document.createElement('div');
+            div.className = 'msg auto-sales';
+            div.innerHTML = `<div class="label">🤖 销售Agent</div><span class="content"></span>
+                <div class="typing-indicator"><span></span><span></span><span></span></div>`;
+            c.appendChild(div); scrollAutoChat();
+            return div;
+        }
+        function createAutoCustomerMsgContainer() {
+            const c = document.getElementById('autoChatMessages');
+            const div = document.createElement('div');
+            div.className = 'msg customer';
+            div.innerHTML = `<div class="label">👤 客户</div><span class="content"></span>
+                <div class="typing-indicator"><span></span><span></span><span></span></div>`;
+            c.appendChild(div); scrollAutoChat();
+            return div;
+        }
+        function addAutoMsgInline(text) {
+            const c = document.getElementById('autoChatMessages');
+            const div = document.createElement('div');
+            div.className = 'msg system-inline';
+            div.textContent = text;
+            c.appendChild(div); scrollAutoChat();
+        }
+        function addAutoLog(type, content) {
+            const c = document.getElementById('auto-logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            const labels = { 'status': '状态', 'stage': '阶段', 'tool-call': '工具调用', 'tool-result': '工具返回', 'guard': '防线', 'error': '错误' };
+            entry.innerHTML = `<span class="log-time">${time}</span> <span class="log-type">${labels[type] || type}</span> ${escapeHtml(content)}`;
+            c.appendChild(entry); c.scrollTop = c.scrollHeight;
+        }
+        function switchAutoTab(tab) {
+            document.querySelectorAll('#autoPanel .monitor-tab').forEach((t, i) => {
+                t.classList.toggle('active', (tab === 'auto-logs' && i === 0) || (tab === 'auto-evals' && i === 1));
+            });
+            document.getElementById('auto-logs').classList.toggle('active', tab === 'auto-logs');
+            document.getElementById('auto-evals').classList.toggle('active', tab === 'auto-evals');
+        }
+        function scrollAutoChat() {
+            const el = document.getElementById('autoChatMessages');
+            el.scrollTop = el.scrollHeight;
+        }
     </script>
 </body>
 

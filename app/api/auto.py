@@ -1,0 +1,297 @@
+# 文件：app/api/auto.py
+"""Auto-Agent 路由 — 销售AI自动对战模式"""
+import json
+import asyncio
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from langchain_core.messages import HumanMessage
+
+from app.core.config import PERSONAS, SALES_STRATEGIES
+from app.services.session_manager import session_manager
+from app.agents.sales_agent import sales_agent_step
+from app.agents.customer_graph import customer_graph
+from app.agents.evaluator import evaluate_turn
+from app.agents.state import DialogueStage
+
+router = APIRouter(prefix="/api/auto", tags=["Auto-Agent 自动对战"])
+
+STAGE_LABELS = {
+    DialogueStage.INTRODUCTION:   "💬 破冰与探寻",
+    DialogueStage.OBJECTION:      "⚡ 异议处理",
+    DialogueStage.DECISION_SIGN:   "✅ 签单成功",
+    DialogueStage.DECISION_REJECT: "❌ 客户拒绝",
+}
+
+
+# ==========================================
+# Schema
+# ==========================================
+class CreateAutoSessionRequest(BaseModel):
+    persona_id: str
+    strategy_id: str = "consultant"
+
+
+class AutoStepRequest(BaseModel):
+    session_id: str
+
+
+# ==========================================
+# 1. 列出销售策略
+# ==========================================
+@router.get("/strategies")
+async def list_strategies():
+    """列出所有可用的销售策略风格"""
+    return [
+        {
+            "strategy_id": s["strategy_id"],
+            "name": s["name"],
+            "description": s["description"],
+            "difficulty": s["difficulty"],
+            "strengths": s["strengths"],
+            "weaknesses": s["weaknesses"],
+        }
+        for s in SALES_STRATEGIES.values()
+    ]
+
+
+# ==========================================
+# 2. 创建自动对战会话
+# ==========================================
+@router.post("/session/create")
+async def create_auto_session(request: CreateAutoSessionRequest):
+    """创建 Auto-Agent 自动对战会话（需指定画像和销售策略）"""
+    persona = PERSONAS.get(request.persona_id)
+    if not persona:
+        raise HTTPException(400, f"画像 '{request.persona_id}' 不存在")
+
+    strategy = SALES_STRATEGIES.get(request.strategy_id)
+    if not strategy:
+        raise HTTPException(400, f"销售策略 '{request.strategy_id}' 不存在")
+
+    session = session_manager.create_session(
+        persona_id=request.persona_id,
+        strategy_id=request.strategy_id,
+    )
+
+    return {
+        "session_id": session.session_id,
+        "persona_id": persona["persona_id"],
+        "persona_name": persona["name"],
+        "persona_description": persona["description"],
+        "strategy_id": strategy["strategy_id"],
+        "strategy_name": strategy["name"],
+        "strategy_description": strategy["description"],
+        "mode": "auto",
+    }
+
+
+# ==========================================
+# 3. 推进一步（SSE 流式）
+# ==========================================
+@router.post("/step")
+async def auto_step(request: AutoStepRequest):
+    """推进自动对战一步（SSE流式）：
+    销售Agent思考 → 工具调用 → 销售发言 → 客户回复 → 后台考官评分
+    """
+    session = session_manager.get_session(request.session_id)
+    if not session:
+        raise HTTPException(404, f"会话 '{request.session_id}' 不存在")
+    if session.is_finished:
+        raise HTTPException(400, "此会话已结束，请创建新会话")
+    if not session.strategy_id:
+        raise HTTPException(400, "此会话不是 Auto-Agent 模式")
+
+    async def event_generator():
+        turn_count = session.turn_count
+        current_stage = session.current_stage
+        customer_reply = ""
+        sales_message = ""
+
+        # ========================================
+        # 阶段1：销售 Agent 发言（含工具调用）
+        # ========================================
+        yield _sse({"type": "phase", "content": "🤖 销售Agent正在行动..."})
+
+        async for event in sales_agent_step(
+            session_id=session.session_id,
+            strategy_id=session.strategy_id,
+            persona_id=session.persona_id,
+            current_stage=current_stage,
+            turn_count=turn_count,
+            conversation_history=session.conversation_history,
+        ):
+            yield _sse(event)
+            if event["type"] == "sales_message_done":
+                sales_message = event["content"]
+
+        if not sales_message:
+            yield _sse({"type": "error", "content": "销售Agent未能生成有效发言"})
+            return
+
+        # 记录销售发言
+        session_manager.add_conversation_turn(session.session_id, "sales", sales_message)
+
+        # ========================================
+        # 阶段2：客户 Agent 响应（LangGraph，含流式token）
+        # ========================================
+        yield _sse({"type": "phase", "content": "👤 客户正在回应..."})
+
+        initial_state = {
+            "messages": [HumanMessage(content=sales_message)],
+            "current_stage": current_stage,
+            "turn_count": turn_count,
+            "persona_id": session.persona_id,
+            "tool_calls_log": [],
+            "force_objection": False,
+        }
+        config = {"configurable": {"thread_id": session.session_id}}
+        dm_finished = False
+
+        try:
+            async for event in customer_graph.astream_events(
+                initial_state, config=config, version="v2"
+            ):
+                kind = event.get("event", "")
+                name = event.get("name", "")
+                data = event.get("data", {})
+                metadata = event.get("metadata", {})
+                langgraph_node = metadata.get("langgraph_node", "")
+
+                if kind == "on_chain_start" and name == "dialogue_manager":
+                    yield _sse({"type": "customer_status", "content": "🚦 状态分析中..."})
+
+                elif kind == "on_chain_end" and name == "dialogue_manager":
+                    dm_finished = True
+                    output = data.get("output", {})
+                    if isinstance(output, dict):
+                        turn_count = output.get("turn_count", turn_count)
+                        current_stage = output.get("current_stage", current_stage)
+                        label = STAGE_LABELS.get(current_stage, current_stage)
+                        yield _sse({
+                            "type": "stage_update",
+                            "stage": current_stage,
+                            "stage_label": label,
+                            "turn_count": turn_count,
+                        })
+                        if output.get("force_objection"):
+                            yield _sse({
+                                "type": "force_guard",
+                                "content": f"🛡️ 强制≥5轮防线触发！第{turn_count}轮强制拖回异议。",
+                            })
+
+                elif kind == "on_chain_end" and name == "tools":
+                    output = data.get("output", {})
+                    messages = output.get("messages", []) if isinstance(output, dict) else []
+                    for msg in messages:
+                        if hasattr(msg, "content") and hasattr(msg, "name"):
+                            yield _sse({
+                                "type": "customer_tool_result",
+                                "tool": getattr(msg, "name", ""),
+                                "content": (msg.content if isinstance(msg.content, str) else str(msg.content))[:400],
+                            })
+
+                elif kind == "on_chain_end" and name == "customer":
+                    output = data.get("output", {})
+                    if isinstance(output, dict):
+                        for msg in output.get("messages", []):
+                            if hasattr(msg, "content") and msg.content and getattr(msg, "type", "") == "ai":
+                                if not customer_reply:
+                                    customer_reply = msg.content
+                                    yield _sse({"type": "customer_token", "content": msg.content})
+
+                elif kind == "on_chat_model_stream":
+                    chunk = data.get("chunk")
+                    is_customer = langgraph_node == "customer" or (dm_finished and langgraph_node != "dialogue_manager")
+                    if chunk and hasattr(chunk, "content") and chunk.content and is_customer:
+                        customer_reply += chunk.content
+                        yield _sse({"type": "customer_token", "content": chunk.content})
+
+        except Exception as e:
+            yield _sse({"type": "error", "content": f"客户Agent错误: {str(e)}"})
+            return
+
+        # 记录客户回复
+        if customer_reply:
+            session_manager.add_conversation_turn(session.session_id, "customer", customer_reply)
+
+        # 更新会话状态
+        is_finished = current_stage in [DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT]
+        session_manager.update_session(
+            session.session_id,
+            turn_count=turn_count,
+            current_stage=current_stage,
+            is_finished=is_finished,
+        )
+
+        # 推送本轮完成事件
+        yield _sse({
+            "type": "step_done",
+            "sales_message": sales_message,
+            "customer_reply": customer_reply,
+            "current_stage": current_stage,
+            "stage_label": STAGE_LABELS.get(current_stage, current_stage),
+            "turn_count": turn_count,
+            "is_finished": is_finished,
+        })
+
+        # 后台考官评分
+        asyncio.create_task(evaluate_turn(
+            session_id=session.session_id,
+            turn_count=turn_count,
+            sales_msg=sales_message,
+            customer_reply=customer_reply,
+            persona_id=session.persona_id,
+        ))
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ==========================================
+# 4. 查询自动对战状态
+# ==========================================
+@router.get("/session/{session_id}/status")
+async def get_auto_status(session_id: str):
+    """查询 Auto-Agent 会话当前状态"""
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(404, f"会话 '{session_id}' 不存在")
+
+    evaluations = [e for e in session.evaluations if e.get("professionalism_score", -1) >= 0]
+    avg = None
+    if evaluations:
+        avg_p = sum(e["professionalism_score"] for e in evaluations) / len(evaluations)
+        avg_c = sum(e["compliance_score"] for e in evaluations) / len(evaluations)
+        avg_s = sum(e["strategy_score"] for e in evaluations) / len(evaluations)
+        avg = {
+            "avg_professionalism": round(avg_p, 1),
+            "avg_compliance": round(avg_c, 1),
+            "avg_strategy": round(avg_s, 1),
+            "avg_total": round((avg_p + avg_c + avg_s) / 3, 1),
+        }
+
+    return {
+        "session_id": session_id,
+        "persona_id": session.persona_id,
+        "strategy_id": session.strategy_id,
+        "turn_count": session.turn_count,
+        "current_stage": session.current_stage,
+        "stage_label": STAGE_LABELS.get(session.current_stage, session.current_stage),
+        "is_finished": session.is_finished,
+        "conversation_count": len(session.conversation_history),
+        "evaluation_count": len(evaluations),
+        "average_scores": avg,
+        "conversation_history": session.conversation_history,
+        "evaluations": evaluations,
+    }
+
+
+# ==========================================
+# 工具函数
+# ==========================================
+def _sse(data: dict) -> str:
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"

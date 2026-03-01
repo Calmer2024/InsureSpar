@@ -16,6 +16,9 @@ class SessionData:
     current_stage: str = "INTRODUCTION"
     is_finished: bool = False
     evaluations: list = field(default_factory=list)  # EvaluationItem 字典列表
+    # Auto-Agent 专用字段
+    strategy_id: Optional[str] = None                # 销售策略 ID（auto 模式才有值）
+    conversation_history: list = field(default_factory=list)  # [{role, content}] 纯文本历史
 
 
 class SessionManager:
@@ -28,16 +31,19 @@ class SessionManager:
     def __init__(self):
         self._sessions: dict[str, SessionData] = {}
 
-    def create_session(self, persona_id: str) -> SessionData:
-        """创建一个新的对话会话"""
-        session_id = str(uuid.uuid4())[:8]  # 短ID，方便调试
+    def create_session(self, persona_id: str, strategy_id: str = None) -> SessionData:
+        """创建一个新的对话会话（普通或Auto模式）"""
+        session_id = str(uuid.uuid4())[:8]
         session = SessionData(
             session_id=session_id,
             persona_id=persona_id,
-            created_at=datetime.now()
+            created_at=datetime.now(),
+            strategy_id=strategy_id,
         )
         self._sessions[session_id] = session
-        print(f"📋 [会话管理] 新建会话: {session_id} (画像: {persona_id})")
+        mode = "Auto" if strategy_id else "普通"
+        print(f"📋 [会话管理] 新建{mode}会话: {session_id} (画像: {persona_id}" +
+              (f", 策略: {strategy_id})" if strategy_id else ")"))
         return session
 
     def get_session(self, session_id: str) -> Optional[SessionData]:
@@ -51,6 +57,12 @@ class SessionManager:
             session.turn_count = turn_count
             session.current_stage = current_stage
             session.is_finished = is_finished
+
+    def add_conversation_turn(self, session_id: str, role: str, content: str):
+        """添加一轮对话记录（Auto模式专用）"""
+        session = self._sessions.get(session_id)
+        if session:
+            session.conversation_history.append({"role": role, "content": content})
 
     def add_evaluation(self, session_id: str, evaluation: dict):
         """添加一轮评分结果"""

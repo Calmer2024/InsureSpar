@@ -7,6 +7,7 @@ from starlette.responses import HTMLResponse
 
 # 新版对练系统路由
 from app.api.chat import router as chat_router
+from app.api.auto import router as auto_router
 
 app = FastAPI(
     title="InsureSpar 保险销售对练系统",
@@ -16,6 +17,7 @@ app = FastAPI(
 
 # 注册路由
 app.include_router(chat_router)
+app.include_router(auto_router)
 
 
 # 调试前端
