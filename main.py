@@ -1,29 +1,37 @@
+"""
+InsureSpar — 多智能体保险销售对练系统
+FastAPI 入口文件
+"""
 from fastapi import FastAPI
 from starlette.responses import HTMLResponse
 
-from routers import user, chat
+# 新版对练系统路由
+from app.api.chat import router as chat_router
 
-from core.database import Base, engine
+app = FastAPI(
+    title="InsureSpar 保险销售对练系统",
+    description="多智能体协作的保险销售训练平台：AI客户 + AI考官 + 状态机编排",
+    version="2.0.0",
+)
 
-# 这句话会让 SQLAlchemy 检查 models，如果 MySQL 里没有这个表，就自动帮你建表！
-# (注意：必须在这之前把你的 models 导入进来，但为了简单，我们在 user 路由里导入了就生效)
-import models.user_model
-Base.metadata.create_all(bind=engine)
+# 注册路由
+app.include_router(chat_router)
 
-app = FastAPI(title="我的安全认证练习 API")
 
-# 相当于把 Controller 注册到 Spring 容器里
-app.include_router(user.router)
-app.include_router(chat.router)
-
-# === 新增：配置静态网页 ===
+# 首页
 @app.get("/", response_class=HTMLResponse)
-async def read_html():
-    """访问根目录时，直接返回我们写好的前端页面"""
-    with open("static/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+async def root():
+    return """
+    <html>
+    <head><title>InsureSpar</title></head>
+    <body style="font-family: sans-serif; text-align: center; padding-top: 80px; background: #f4f4f9;">
+        <h1>🎭 InsureSpar 保险销售对练系统</h1>
+        <p>请访问 <a href="/docs">/docs</a> 使用 Swagger UI 进行调试</p>
+    </body>
+    </html>
+    """
 
 
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"你好，{name}！这是你的第一个 FastAPI 接口。"}
+@app.get("/health")
+async def health():
+    return {"status": "ok", "version": "2.0.0"}
