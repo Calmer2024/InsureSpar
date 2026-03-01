@@ -32,10 +32,12 @@ TOOL_EXECUTOR = {
 
 # 阶段中文标签
 STAGE_LABELS = {
-    DialogueStage.INTRODUCTION: "💬 破冰与探寻",
-    DialogueStage.OBJECTION:    "⚡ 异议处理",
-    DialogueStage.DECISION_SIGN:   "✅ 签单成功",
-    DialogueStage.DECISION_REJECT: "❌ 客户拒绝",
+    DialogueStage.INTRODUCTION:       "💬 破冰与探寻",
+    DialogueStage.OBJECTION:          "⚡ 异议处理",
+    DialogueStage.DECISION_SIGN:      "✅ 签单成功",
+    DialogueStage.DECISION_PENDING:   "📋 同意核保",
+    DialogueStage.DECISION_FOLLOW_UP: "📞 需要跟进",
+    DialogueStage.DECISION_REJECT:    "❌ 客户拒绝",
 }
 
 
@@ -196,15 +198,29 @@ def _build_sales_stage_instruction(stage: str, turn_count: int, persona: dict) -
 
     elif stage == DialogueStage.DECISION_SIGN:
         return """【阶段任务 - 临门一脚】
-客户已有购买意向，此刻最忌拖泥带水。你的任务：
-- 用简洁语言确认客户的选择（产品/保额/交费期）
-- 告知下一步投保流程（健康告知/填表/缴费）
-- 解答最后的小顾虑，不要再引入新话题"""
+客户已有购买意向，此刻最忌拖泥带水。
+- 确认产品/保额/交费期
+- 告知下一步投保流程
+- 不要再引入新话题"""
+
+    elif stage == DialogueStage.DECISION_PENDING:
+        return """【阶段任务 - 促成核保】
+客户愿意推进但需要核保流程：
+- 确认客户需要提交的材料（体检报告/病历）
+- 解释预核保流程和时间
+- 强调核保通过后可再做最终决定，降低客户心理压力"""
+
+    elif stage == DialogueStage.DECISION_FOLLOW_UP:
+        return """【阶段任务 - 争取跟进】
+客户态度不错但想拖延：
+- 理解客户的考虑，不要逼迫
+- 约定具体的跟进时间（不要留模糊的"改天"）
+- 留下关键资料或计算结果供客户回去参考"""
 
     elif stage == DialogueStage.DECISION_REJECT:
         return """【阶段任务 - 挽回或收场】
-客户已拒绝，有两种选择：
-- 如有机会：抛出最后一个有力论点（通常是最核心痛点）
-- 如客户态度坚决：优雅收场，留下好印象，为下次机会蓄力"""
+客户已拒绝：
+- 如有机会：抛出最后一个有力论点
+- 如态度坚决：优雅收场，留好印象"""
 
     return ""

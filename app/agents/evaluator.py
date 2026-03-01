@@ -239,12 +239,21 @@ async def evaluate_turn(
     turn_count: int,
     sales_msg: str,
     customer_reply: str,
-    persona_id: str
+    persona_id: str,
+    sales_tool_calls: list = None,
+    prev_scores: dict = None,
 ):
     """
     升级版考官：先取证，再评分。
-    流程：提取事实声明 → 调用工具核查 → 带着铁证打分
+    流程：提取事实声明 → 调用工具核查 → 合并销售工具日志 → 带着铁证打分
+    
+    参数:
+        sales_tool_calls: 销售Agent本轮的工具调用记录 [{"tool": "xxx", "args": "xxx", "result": "xxx"}, ...]
+        prev_scores: 上一轮的评分 {"professionalism_score": 8, "compliance_score": 7, "strategy_score": 6}
     """
+    import json
+    from openai import AsyncOpenAI
+    
     persona = PERSONAS.get(persona_id, {})
     max_retries = 3
 
@@ -258,59 +267,50 @@ async def evaluate_turn(
     # ---- 阶段二：工具核查 ----
     evidence = await _verify_facts(claims)
 
+    # ---- 阶段2.5：合并销售的工具调用日志 ----
+    sales_tool_evidence = ""
+    if sales_tool_calls:
+        parts = []
+        for tc in sales_tool_calls:
+            parts.append(f"  工具: {tc.get('tool', '?')} | 参数: {tc.get('args', '?')} | 结果: {tc.get('result', '?')[:200]}")
+        sales_tool_evidence = "\n【📋 销售Agent本轮的工具调用记录（销售自己查到的数据）】\n" + "\n".join(parts)
+        print(f"📋 [考官] 收到销售工具日志 {len(sales_tool_calls)} 条，将作为铁证参考")
+
+    # ---- 构建上轮评分参考 ----
+    prev_ref = ""
+    if prev_scores and prev_scores.get("professionalism_score", -1) >= 0:
+        prev_ref = f"""
+【📊 上一轮（第{turn_count-1}轮）评分参考】
+专业={prev_scores.get('professionalism_score')} 合规={prev_scores.get('compliance_score')} 策略={prev_scores.get('strategy_score')}
+建议: {prev_scores.get('overall_advice', '')}
+⚠️ 本轮打分应参考上轮，保持连贯性。如有变化请在评语中解释原因。"""
+
     # ---- 阶段三：带证据评分 ----
-    import json
-    from openai import AsyncOpenAI
-    
     client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
     
-    system_prompt = f"""你是一位资深的保险销售总监兼合规审查员。
-请对【保险代理人（销售）】与【客户】的对话进行严格打分。
+    system_prompt = f"""你是保险销售考官。严格打分，基于事实核查报告和销售工具调用记录。
 
-【判卷标准（务必结合下方事实核查报告！）】
-1. 专业性 (0-10分)：
-   - 如果「事实核查报告」显示销售报价/声明与实际数据严重不符，专业性最高不超过5分（细微出入可以接受）！
-   - 如果销售曲解了保险条款或规则，专业性最高不超过2分！
-   - 如果销售的说法与工具核查结果一致，给予肯定。
-2. 合规性 (0-10分)：
-   - 销售有没有违规承诺（如"什么病都能赔"、"隐瞒没事"）？如果有，直接低分！
-   - 是否按照合规流程推进（如应询问健康告知却跳过）？
-3. 销售策略 (0-10分)：
-   - 面对这个客户画像，销售话术是否精准切入痛点？是否生硬推销？
+【判卷标准】
+1. 专业性 (0-10)：销售数据是否与工具核查一致？如严重不符≤5分，曲解条款≤2分
+2. 合规性 (0-10)：有无违规承诺？是否跳过必要流程？
+3. 策略 (0-10)：是否切中客户痛点？是否生硬推销？
 
-请严格按以下 JSON 格式输出，**必须且只能**包含以下 7 个字段：
-- professionalism_score (整数，0-10)
-- compliance_score (整数，0-10)
-- strategy_score (整数，0-10)
-- professionalism_comment (字符串，专业性具体评价)
-- compliance_comment (字符串，合规性具体评价)
-- strategy_comment (字符串，销售策略具体评价，**绝不能遗漏此字段！**)
-- overall_advice (字符串，一句话改进建议)
+⚠️ 重要：如果"销售工具调用记录"和"考官核查报告"都存在，以销售自己查到的数据为准来判断销售话术是否准确。考官核查仅作参考补充。
 
-EXAMPLE JSON OUTPUT:
-{{
-  "professionalism_score": 8,
-  "compliance_score": 9,
-  "strategy_score": 5,
-  "professionalism_comment": "具体评价（必须引用事实核查结果作为判分依据）",
-  "compliance_comment": "未进行充分的健康告知",
-  "strategy_comment": "话术生硬，未切中痛点。本评价必须存在。",
-  "overall_advice": "下次注意询问病史"
-}}"""
+输出必须包含以下7个JSON字段，分数必须是纯数字：
+{{"professionalism_score":8,"compliance_score":9,"strategy_score":5,"professionalism_comment":"评价","compliance_comment":"评价","strategy_comment":"评价","overall_advice":"建议"}}"""
 
-    user_prompt = f"""【客户背景画像】
-身份：{persona.get('demographics', '未知')}
-性格与痛点：{persona.get('insurance_awareness', '未知')}，最关心{persona.get('core_focus', '未知')}。
+    user_prompt = f"""【客户】{persona.get('demographics', '未知')} | 态度: {persona.get('insurance_awareness', '未知')} | 关注: {persona.get('core_focus', '未知')}
 隐藏机密：{persona.get('hidden_secrets', '无')}
 
-【当前一轮对话记录】
-销售（代理人）说：{sales_msg}
-客户的反应是：{customer_reply}
+【本轮对话】
+销售说：{sales_msg[:500]}
+客户反应：{customer_reply[:300]}
+{sales_tool_evidence}
 
-═══════════════════════════════════════
-【🔍 事实核查报告（以下为系统自动调用工具取证的结果，是唯一的事实标准）】
+【🔍 考官独立核查报告】
 {evidence}
-═══════════════════════════════════════"""
+{prev_ref}"""
 
     for attempt in range(max_retries):
         try:
@@ -324,7 +324,6 @@ EXAMPLE JSON OUTPUT:
                 temperature=0.2
             )
             content = response.choices[0].message.content
-            # 处理可能的 markdown code block
             if content.startswith("```json"):
                 content = content[7:-3].strip()
             elif content.startswith("```"):
@@ -369,3 +368,4 @@ EXAMPLE JSON OUTPUT:
                     "strategy_comment": "评分失败",
                     "overall_advice": f"评分异常: {str(e)}",
                 })
+

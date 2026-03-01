@@ -17,10 +17,20 @@ from app.agents.state import DialogueStage
 router = APIRouter(prefix="/api/auto", tags=["Auto-Agent 自动对战"])
 
 STAGE_LABELS = {
-    DialogueStage.INTRODUCTION:   "💬 破冰与探寻",
-    DialogueStage.OBJECTION:      "⚡ 异议处理",
-    DialogueStage.DECISION_SIGN:   "✅ 签单成功",
-    DialogueStage.DECISION_REJECT: "❌ 客户拒绝",
+    DialogueStage.INTRODUCTION:       "💬 破冰与探寻",
+    DialogueStage.OBJECTION:          "⚡ 异议处理",
+    DialogueStage.DECISION_SIGN:      "✅ 签单成功",
+    DialogueStage.DECISION_PENDING:   "📋 同意核保",
+    DialogueStage.DECISION_FOLLOW_UP: "📞 需要跟进",
+    DialogueStage.DECISION_REJECT:    "❌ 客户拒绝",
+}
+
+# 所有决策阶段（进入后对话结束）
+DECISION_STAGES = {
+    DialogueStage.DECISION_SIGN,
+    DialogueStage.DECISION_PENDING,
+    DialogueStage.DECISION_FOLLOW_UP,
+    DialogueStage.DECISION_REJECT,
 }
 
 
@@ -107,6 +117,7 @@ async def auto_step(request: AutoStepRequest):
         current_stage = session.current_stage
         customer_reply = ""
         sales_message = ""
+        sales_tool_calls_log = []  # 收集销售的工具调用
 
         # ========================================
         # 阶段1：销售 Agent 发言（含工具调用）
@@ -122,7 +133,16 @@ async def auto_step(request: AutoStepRequest):
             conversation_history=session.conversation_history,
         ):
             yield _sse(event)
-            if event["type"] == "sales_message_done":
+            # 收集销售的工具调用日志
+            if event["type"] == "sales_tool_call":
+                sales_tool_calls_log.append({
+                    "tool": event.get("tool", ""),
+                    "args": event.get("args", ""),
+                    "result": "",  # 结果在下一个事件中
+                })
+            elif event["type"] == "sales_tool_result" and sales_tool_calls_log:
+                sales_tool_calls_log[-1]["result"] = event.get("content", "")
+            elif event["type"] == "sales_message_done":
                 sales_message = event["content"]
 
         if not sales_message:
@@ -144,6 +164,7 @@ async def auto_step(request: AutoStepRequest):
             "persona_id": session.persona_id,
             "tool_calls_log": [],
             "force_objection": False,
+            "stage_reasoning": "",
         }
         config = {"configurable": {"thread_id": session.session_id}}
         dm_finished = False
@@ -167,12 +188,14 @@ async def auto_step(request: AutoStepRequest):
                     if isinstance(output, dict):
                         turn_count = output.get("turn_count", turn_count)
                         current_stage = output.get("current_stage", current_stage)
+                        reasoning = output.get("stage_reasoning", "")
                         label = STAGE_LABELS.get(current_stage, current_stage)
                         yield _sse({
                             "type": "stage_update",
                             "stage": current_stage,
                             "stage_label": label,
                             "turn_count": turn_count,
+                            "reasoning": reasoning,
                         })
                         if output.get("force_objection"):
                             yield _sse({
@@ -216,7 +239,7 @@ async def auto_step(request: AutoStepRequest):
             session_manager.add_conversation_turn(session.session_id, "customer", customer_reply)
 
         # 更新会话状态
-        is_finished = current_stage in [DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT]
+        is_finished = current_stage in DECISION_STAGES
         session_manager.update_session(
             session.session_id,
             turn_count=turn_count,
@@ -235,13 +258,22 @@ async def auto_step(request: AutoStepRequest):
             "is_finished": is_finished,
         })
 
-        # 后台考官评分
+        # 获取上一轮评分用于连贯性参考
+        prev_scores = None
+        if session.evaluations:
+            valid_evals = [e for e in session.evaluations if e.get("professionalism_score", -1) >= 0]
+            if valid_evals:
+                prev_scores = valid_evals[-1]
+
+        # 后台考官评分（传入销售工具日志 + 上轮评分）
         asyncio.create_task(evaluate_turn(
             session_id=session.session_id,
             turn_count=turn_count,
             sales_msg=sales_message,
             customer_reply=customer_reply,
             persona_id=session.persona_id,
+            sales_tool_calls=sales_tool_calls_log if sales_tool_calls_log else None,
+            prev_scores=prev_scores,
         ))
 
     return StreamingResponse(

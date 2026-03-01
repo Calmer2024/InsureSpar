@@ -67,6 +67,7 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
         "persona_id": session.persona_id,
         "tool_calls_log": [],
         "force_objection": False,
+        "stage_reasoning": "",
     }
 
     # 使用 session_id 作为 LangGraph 的 thread_id
@@ -87,7 +88,10 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
     tool_calls_log = result.get("tool_calls_log", [])
 
     # 判断是否结束
-    is_finished = current_stage in [DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT]
+    is_finished = current_stage in [
+        DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
+        DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
+    ]
 
     # 更新会话状态
     session_manager.update_session(
@@ -109,10 +113,12 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
 
     # 阶段中文标签映射
     stage_labels = {
-        DialogueStage.INTRODUCTION: "💬 破冰与探寻",
-        DialogueStage.OBJECTION: "⚡ 异议处理",
-        DialogueStage.DECISION_SIGN: "✅ 签单成功",
-        DialogueStage.DECISION_REJECT: "❌ 客户拒绝",
+        DialogueStage.INTRODUCTION:       "💬 破冰与探寻",
+        DialogueStage.OBJECTION:          "⚡ 异议处理",
+        DialogueStage.DECISION_SIGN:      "✅ 签单成功",
+        DialogueStage.DECISION_PENDING:   "📋 同意核保",
+        DialogueStage.DECISION_FOLLOW_UP: "📞 需要跟进",
+        DialogueStage.DECISION_REJECT:    "❌ 客户拒绝",
     }
 
     return ChatSendResponse(
@@ -219,10 +225,12 @@ async def list_personas():
 # 6. SSE 流式聊天接口
 # ==========================================
 STAGE_LABELS = {
-    DialogueStage.INTRODUCTION: "💬 破冰与探寻",
-    DialogueStage.OBJECTION: "⚡ 异议处理",
-    DialogueStage.DECISION_SIGN: "✅ 签单成功",
-    DialogueStage.DECISION_REJECT: "❌ 客户拒绝",
+    DialogueStage.INTRODUCTION:       "💬 破冰与探寻",
+    DialogueStage.OBJECTION:          "⚡ 异议处理",
+    DialogueStage.DECISION_SIGN:      "✅ 签单成功",
+    DialogueStage.DECISION_PENDING:   "📋 同意核保",
+    DialogueStage.DECISION_FOLLOW_UP: "📞 需要跟进",
+    DialogueStage.DECISION_REJECT:    "❌ 客户拒绝",
 }
 
 
@@ -244,6 +252,7 @@ async def stream_chat(request: ChatSendRequest):
             "persona_id": session.persona_id,
             "tool_calls_log": [],
             "force_objection": False,
+            "stage_reasoning": "",
         }
         config = {"configurable": {"thread_id": session.session_id}}
 
@@ -346,7 +355,10 @@ async def stream_chat(request: ChatSendRequest):
             yield _sse({"type": "error", "content": f"系统错误: {str(e)}"})
 
         # === 最终结果 ===
-        is_finished = current_stage in [DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT]
+        is_finished = current_stage in [
+            DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
+            DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
+        ]
         session_manager.update_session(
             session.session_id,
             turn_count=turn_count,
@@ -364,13 +376,21 @@ async def stream_chat(request: ChatSendRequest):
             "tool_calls_log": tool_logs,
         })
 
-        # 后台异步评分
+        # 获取上一轮评分
+        prev_scores = None
+        if session.evaluations:
+            valid_evals = [e for e in session.evaluations if e.get('professionalism_score', -1) >= 0]
+            if valid_evals:
+                prev_scores = valid_evals[-1]
+
+        # 后台异步评分（传入上轮评分）
         asyncio.create_task(evaluate_turn(
             session_id=session.session_id,
             turn_count=turn_count,
             sales_msg=request.message,
             customer_reply=customer_reply,
             persona_id=session.persona_id,
+            prev_scores=prev_scores,
         ))
 
     return StreamingResponse(

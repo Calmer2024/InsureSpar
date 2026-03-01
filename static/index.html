@@ -1459,6 +1459,9 @@
                     document.getElementById('turnDisplay').textContent = data.turn_count;
                     document.getElementById('stageDisplay').textContent = `📍 ${data.stage_label}`;
                     addAutoLog('stage', `阶段 → ${data.stage_label} (第${data.turn_count}轮)`);
+                    if (data.reasoning) {
+                        addAutoLog('status', `🧠 判定理由: ${data.reasoning}`);
+                    }
                     break;
                 case 'force_guard':
                     addAutoLog('guard', data.content);
