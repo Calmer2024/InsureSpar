@@ -51,20 +51,16 @@ evaluator_llm = ChatOpenAI(
 # ==========================================
 async def _extract_fact_claims(sales_msg: str) -> FactClaimsExtraction:
     """让 LLM 从销售话术中提取所有事实性声明"""
-    extraction_prompt = f"""你是一个事实核查助手。请分析以下保险销售的话术，提取其中可以被数据核实的事实性声明。
+    import json
+    from openai import AsyncOpenAI
+    
+    client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+    
+    system_prompt = """你是一个事实核查助手。请分析销售话术，提取其中可以被数据核实的事实性声明。
+请严格按以下 JSON 格式输出（必须包含所有字段）：
 
-销售说："{sales_msg}"
-
-请判断：
-1. 销售是否提到了具体的保费金额？（如"每年交4800元"）
-   - 如果有，提取涉及的年龄、性别、交费期、保额和声称的金额
-2. 销售是否提到了现金价值/退保金额？（如"第10年退保能拿回3万"）
-   - 如果有，提取涉及的性别、年龄、交费期、保单年度和声称的金额
-3. 销售是否提到了保险条款、核保规则、理赔条件等？（如"高血压可以投保"、"等待期内也能赔"）
-   - 如果有，提取核心声明作为查询关键词
-
-请严格按以下 JSON 格式输出：
-{{
+EXAMPLE JSON OUTPUT:
+{
   "has_premium_claim": true,
   "premium_details": "45岁男性，20年交，10万保额，声称每年保费4800元",
   "has_cash_value_claim": false,
@@ -72,13 +68,31 @@ async def _extract_fact_claims(sales_msg: str) -> FactClaimsExtraction:
   "has_rule_claim": true,
   "rule_query": "高血压能否投保",
   "summary": "销售声称45岁男性20年交10万保额每年4800元，并说高血压可以正常投保"
-}}"""
+}"""
+
+    user_prompt = f"""销售说："{sales_msg}"
+
+请判断：
+1. 销售是否提到了具体的保费金额？（如"每年交4800元"）
+   - 如果有，提取涉及的年龄、性别、交费期、保额和声称的金额
+2. 销售是否提到了现金价值/退保金额？（如"第10年退保能拿回3万"）
+   - 如果有，提取涉及的性别、年龄、交费期、保单年度和声称的金额
+3. 销售是否提到了保险条款、核保规则、理赔条件等？（如"高血压可以投保"、"等待期内也能赔"）
+   - 如果有，提取核心声明作为查询关键词"""
 
     try:
-        structured_llm = evaluator_llm.with_structured_output(
-            FactClaimsExtraction, method="json_mode"
+        response = await client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            response_format={'type': 'json_object'},
+            temperature=0.1
         )
-        result = structured_llm.invoke(extraction_prompt)
+        content = response.choices[0].message.content
+        data = json.loads(content)
+        result = FactClaimsExtraction(**data)
         print(f"🔎 [考官取证] 事实提取完成: {result.summary}")
         return result
     except Exception as e:
@@ -235,10 +249,46 @@ async def evaluate_turn(
     evidence = await _verify_facts(claims)
 
     # ---- 阶段三：带证据评分 ----
-    evaluator_prompt = f"""你是一位资深的保险销售总监兼合规审查员。
-请对以下这轮【保险代理人（销售）】与【客户】的对话进行严格打分。
+    import json
+    from openai import AsyncOpenAI
+    
+    client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+    
+    system_prompt = f"""你是一位资深的保险销售总监兼合规审查员。
+请对【保险代理人（销售）】与【客户】的对话进行严格打分。
 
-【客户背景画像】
+【判卷标准（务必结合下方事实核查报告！）】
+1. 专业性 (0-10分)：
+   - 如果「事实核查报告」显示销售报价/声明与实际数据不符，专业性最高不超过3分！
+   - 如果销售曲解了保险条款或规则，专业性最高不超过2分！
+   - 如果销售的说法与工具核查结果一致，给予肯定。
+2. 合规性 (0-10分)：
+   - 销售有没有违规承诺（如"什么病都能赔"、"隐瞒没事"）？如果有，直接低分！
+   - 是否按照合规流程推进（如应询问健康告知却跳过）？
+3. 销售策略 (0-10分)：
+   - 面对这个客户画像，销售话术是否精准切入痛点？是否生硬推销？
+
+请严格按以下 JSON 格式输出，**必须且只能**包含以下 7 个字段：
+- professionalism_score (整数，0-10)
+- compliance_score (整数，0-10)
+- strategy_score (整数，0-10)
+- professionalism_comment (字符串，专业性具体评价)
+- compliance_comment (字符串，合规性具体评价)
+- strategy_comment (字符串，销售策略具体评价，**绝不能遗漏此字段！**)
+- overall_advice (字符串，一句话改进建议)
+
+EXAMPLE JSON OUTPUT:
+{{
+  "professionalism_score": 8,
+  "compliance_score": 9,
+  "strategy_score": 5,
+  "professionalism_comment": "具体评价（必须引用事实核查结果作为判分依据）",
+  "compliance_comment": "未进行充分的健康告知",
+  "strategy_comment": "话术生硬，未切中痛点。本评价必须存在。",
+  "overall_advice": "下次注意询问病史"
+}}"""
+
+    user_prompt = f"""【客户背景画像】
 身份：{persona.get('demographics', '未知')}
 性格与痛点：{persona.get('insurance_awareness', '未知')}，最关心{persona.get('core_focus', '未知')}。
 隐藏机密：{persona.get('hidden_secrets', '无')}
@@ -250,36 +300,28 @@ async def evaluate_turn(
 ═══════════════════════════════════════
 【🔍 事实核查报告（以下为系统自动调用工具取证的结果，是唯一的事实标准）】
 {evidence}
-═══════════════════════════════════════
-
-【判卷标准（务必结合上方事实核查报告！）】
-1. 专业性 (0-10分)：
-   - 如果「事实核查报告」显示销售报价/声明与实际数据不符，专业性最高不超过3分！
-   - 如果销售曲解了保险条款或规则，专业性最高不超过2分！
-   - 如果销售的说法与工具核查结果一致，给予肯定。
-2. 合规性 (0-10分)：
-   - 销售有没有违规承诺（如"什么病都能赔"、"隐瞒没事"）？如果有，直接低分！
-   - 是否按照合规流程推进（如应询问健康告知却跳过）？
-3. 销售策略 (0-10分)：
-   - 面对这个客户画像，销售话术是否精准切入痛点？是否生硬推销？
-
-请严格按以下 JSON 格式输出，不要用 markdown 包裹：
-{{
-  "professionalism_score": 8,
-  "compliance_score": 9,
-  "strategy_score": 5,
-  "professionalism_comment": "具体评价（必须引用事实核查结果作为判分依据）",
-  "compliance_comment": "具体评价",
-  "strategy_comment": "具体评价",
-  "overall_advice": "一句话建议"
-}}"""
+═══════════════════════════════════════"""
 
     for attempt in range(max_retries):
         try:
-            structured_llm = evaluator_llm.with_structured_output(
-                EvaluationResult, method="json_mode"
+            response = await client.chat.completions.create(
+                model=LLM_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                response_format={'type': 'json_object'},
+                temperature=0.2
             )
-            result: EvaluationResult = structured_llm.invoke(evaluator_prompt)
+            content = response.choices[0].message.content
+            # 处理可能的 markdown code block
+            if content.startswith("```json"):
+                content = content[7:-3].strip()
+            elif content.startswith("```"):
+                content = content[3:-3].strip()
+                
+            data = json.loads(content)
+            result = EvaluationResult(**data)
 
             evaluation_dict = {
                 "turn": turn_count,

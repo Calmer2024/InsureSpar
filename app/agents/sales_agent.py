@@ -63,7 +63,7 @@ async def sales_agent_step(
 
     # ---- 构建 System Prompt ----
     stage_instruction = _build_sales_stage_instruction(current_stage, turn_count, persona)
-    system_content = f"""你是一名保险销售顾问，正在与客户进行真实的销售对话。
+    system_content = f"""你是一名保险销售顾问，正在与客户进行真实的销售对话，你正在销售。
 
 【你的销售风格：{strategy.get('name', '专业顾问型')}】
 {strategy.get('prompt_instructions', '')}
@@ -73,6 +73,13 @@ async def sales_agent_step(
 财务背景：{persona.get('financial_status', '未知')}
 对保险的态度：{persona.get('insurance_awareness', '未知')}
 最关心的问题：{persona.get('core_focus', '未知')}
+
+【销售保险信息】
+现在需要销售的产品是“泰康乐享健康2026重大疾病保险”。该产品为终身重大疾病保险，仅提供终身保障，不存在任何定期版本。被保险人投保年龄必须在0至70周岁（含）之间，超出范围必须明确拒绝投保，不得承诺特殊通融。
+产品支持趸交和年交两种缴费方式。年交可选1年、3年、5年、10年、15年、20年、25年、30年，但必须满足“投保年龄＋缴费年期≤75”的规则，否则不能承保。例如55岁客户最长只能选择20年交。面对客户关于缴费年期的提问，必须主动进行年龄与缴费期的合规计算并解释逻辑。
+本产品等待期为90天，
+理赔金额与出险时被保险人年龄相关
+产品实行严格的责任互斥原则。重大疾病保险金、全残保险金、疾病终末期保险金和身故保险金仅赔付其中一项，一旦任何一项完成赔付，合同即终止，其余责任失效。不得暗示或承诺可叠加理赔。
 
 【当前对话状态】
 阶段：{current_stage} — {STAGE_LABELS.get(current_stage, '')}
@@ -84,7 +91,7 @@ async def sales_agent_step(
 - 提到现金价值或退保金额前：必须先调用 query_cash_value 查询
 - 引用任何保险条款/核保规则前：必须先调用 search_insurance_rules 验证
 
-直接输出你要对客户说的话，不要有任何内心OS或前缀说明。"""
+直接输出你要对客户说的话，不要有任何内心OS或前缀说明，不要使用任何MD格式标记。"""
 
     # ---- 构建消息历史 ----
     messages = [SystemMessage(content=system_content)]
