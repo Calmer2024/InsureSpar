@@ -29,4 +29,5 @@ class AgentState(TypedDict):
     tool_calls_log: list[str]   # 工具调用日志（供前端展示）
     force_objection: bool       # 是否被强制拉回异议阶段
     stage_reasoning: str        # 状态判定理由（透传到前端）
+    decision_strike: int        # 连续判定为决策状态的次数（需达3次才算真结束）
 

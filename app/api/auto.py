@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 
-from app.core.config import PERSONAS, SALES_STRATEGIES
+from app.core.config import PERSONAS, SALES_STRATEGIES, DECISION_STRIKES_REQUIRED
 from app.services.session_manager import session_manager
 from app.agents.sales_agent import sales_agent_step
 from app.agents.customer_graph import customer_graph
@@ -165,9 +165,10 @@ async def auto_step(request: AutoStepRequest):
             "tool_calls_log": [],
             "force_objection": False,
             "stage_reasoning": "",
+            "decision_strike": session.decision_strike,
         }
         config = {"configurable": {"thread_id": session.session_id}}
-        dm_finished = False
+        customer_done = False  # 客户是否已完成回复
 
         try:
             async for event in customer_graph.astream_events(
@@ -189,6 +190,7 @@ async def auto_step(request: AutoStepRequest):
                         turn_count = output.get("turn_count", turn_count)
                         current_stage = output.get("current_stage", current_stage)
                         reasoning = output.get("stage_reasoning", "")
+                        session.decision_strike = output.get("decision_strike", session.decision_strike)
                         label = STAGE_LABELS.get(current_stage, current_stage)
                         yield _sse({
                             "type": "stage_update",
@@ -217,15 +219,17 @@ async def auto_step(request: AutoStepRequest):
                 elif kind == "on_chain_end" and name == "customer":
                     output = data.get("output", {})
                     if isinstance(output, dict):
+                        turn_count = output.get("turn_count", turn_count)
                         for msg in output.get("messages", []):
                             if hasattr(msg, "content") and msg.content and getattr(msg, "type", "") == "ai":
                                 if not customer_reply:
                                     customer_reply = msg.content
                                     yield _sse({"type": "customer_token", "content": msg.content})
+                        customer_done = True
 
                 elif kind == "on_chat_model_stream":
                     chunk = data.get("chunk")
-                    is_customer = langgraph_node == "customer" or (dm_finished and langgraph_node != "dialogue_manager")
+                    is_customer = langgraph_node == "customer" and not customer_done
                     if chunk and hasattr(chunk, "content") and chunk.content and is_customer:
                         customer_reply += chunk.content
                         yield _sse({"type": "customer_token", "content": chunk.content})
@@ -238,13 +242,14 @@ async def auto_step(request: AutoStepRequest):
         if customer_reply:
             session_manager.add_conversation_turn(session.session_id, "customer", customer_reply)
 
-        # 更新会话状态
-        is_finished = current_stage in DECISION_STAGES
+        # 更新会话状态 (连续 N 轮才算结束)
+        is_finished = (current_stage in DECISION_STAGES) and (session.decision_strike >= DECISION_STRIKES_REQUIRED)
         session_manager.update_session(
             session.session_id,
             turn_count=turn_count,
             current_stage=current_stage,
             is_finished=is_finished,
+            decision_strike=session.decision_strike,
         )
 
         # 推送本轮完成事件

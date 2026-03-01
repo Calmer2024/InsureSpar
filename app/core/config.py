@@ -19,9 +19,10 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 LLM_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-e6a0efee40b14d7a84dc2b6af048bd7d")
 
 # ==========================================
-# 对话规则常量
+# 业务逻辑配置
 # ==========================================
-MIN_TURNS_BEFORE_DECISION = 5  # 至少对话 N 轮后才允许进入决策阶段
+MIN_TURNS_BEFORE_DECISION = 5  # 前5轮强制拦截决策
+DECISION_STRIKES_REQUIRED = 2  # 连续判定为决策状态 N 次后，才真正结束对话
 
 # ==========================================
 # 加载客户画像配置

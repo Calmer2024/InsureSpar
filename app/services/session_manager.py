@@ -15,6 +15,7 @@ class SessionData:
     turn_count: int = 0
     current_stage: str = "INTRODUCTION"
     is_finished: bool = False
+    decision_strike: int = 0                         # 连续判定为决策状态的次数
     evaluations: list = field(default_factory=list)  # EvaluationItem 字典列表
     # Auto-Agent 专用字段
     strategy_id: Optional[str] = None                # 销售策略 ID（auto 模式才有值）
@@ -50,13 +51,14 @@ class SessionManager:
         """获取指定会话"""
         return self._sessions.get(session_id)
 
-    def update_session(self, session_id: str, turn_count: int, current_stage: str, is_finished: bool = False):
+    def update_session(self, session_id: str, turn_count: int, current_stage: str, is_finished: bool = False, decision_strike: int = 0):
         """更新会话状态"""
         session = self._sessions.get(session_id)
         if session:
             session.turn_count = turn_count
             session.current_stage = current_stage
             session.is_finished = is_finished
+            session.decision_strike = decision_strike
 
     def add_conversation_turn(self, session_id: str, role: str, content: str):
         """添加一轮对话记录（Auto模式专用）"""

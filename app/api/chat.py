@@ -12,7 +12,7 @@ from app.schemas.chat_schema import (
     SessionHistoryResponse, MessageItem,
     SessionEvaluationResponse, EvaluationItem,
 )
-from app.core.config import PERSONAS
+from app.core.config import PERSONAS, DECISION_STRIKES_REQUIRED
 from app.services.session_manager import session_manager
 from app.agents.customer_graph import customer_graph
 from app.agents.evaluator import evaluate_turn
@@ -68,6 +68,7 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
         "tool_calls_log": [],
         "force_objection": False,
         "stage_reasoning": "",
+        "decision_strike": session.decision_strike,
     }
 
     # 使用 session_id 作为 LangGraph 的 thread_id
@@ -88,10 +89,12 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
     tool_calls_log = result.get("tool_calls_log", [])
 
     # 判断是否结束
-    is_finished = current_stage in [
+    is_finished = (current_stage in [
         DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
         DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
-    ]
+    ]) and (result.get("decision_strike", 0) >= DECISION_STRIKES_REQUIRED)
+    
+    session.decision_strike = result.get("decision_strike", session.decision_strike)
 
     # 更新会话状态
     session_manager.update_session(
@@ -253,6 +256,7 @@ async def stream_chat(request: ChatSendRequest):
             "tool_calls_log": [],
             "force_objection": False,
             "stage_reasoning": "",
+            "decision_strike": session.decision_strike,
         }
         config = {"configurable": {"thread_id": session.session_id}}
 
@@ -261,7 +265,8 @@ async def stream_chat(request: ChatSendRequest):
         turn_count = session.turn_count
         tool_logs = []
         force_triggered = False
-        dm_finished = False  # 对话管理器是否已结束
+        dm_finished = False  # 对话管理器是否已结束（兼容旧逻辑）
+        customer_done = False  # 客户是否已完成回复
 
         try:
             async for event in customer_graph.astream_events(
@@ -286,18 +291,19 @@ async def stream_chat(request: ChatSendRequest):
 
                 # === 节点结束 → 获取状态更新 ===
                 elif kind == "on_chain_end" and name == "dialogue_manager":
-                    dm_finished = True
                     output = data.get("output", {})
                     if isinstance(output, dict):
-                        turn_count = output.get("turn_count", turn_count)
                         current_stage = output.get("current_stage", current_stage)
                         force_triggered = output.get("force_objection", False)
+                        session.decision_strike = output.get("decision_strike", session.decision_strike)
+                        reasoning = output.get("stage_reasoning", "")
                         label = STAGE_LABELS.get(current_stage, current_stage)
                         yield _sse({
                             "type": "stage_update",
                             "stage": current_stage,
                             "stage_label": label,
                             "turn_count": turn_count,
+                            "reasoning": reasoning,
                         })
                         if force_triggered:
                             yield _sse({
@@ -324,19 +330,20 @@ async def stream_chat(request: ChatSendRequest):
                 elif kind == "on_chain_end" and name == "customer":
                     output = data.get("output", {})
                     if isinstance(output, dict):
+                        turn_count = output.get("turn_count", turn_count)
                         msgs = output.get("messages", [])
                         for msg in msgs:
                             if hasattr(msg, "content") and msg.content and hasattr(msg, "type") and msg.type == "ai":
                                 if not customer_reply:
-                                    # token流没捕获到，用完整回复作为回退
                                     customer_reply = msg.content
                                     yield _sse({"type": "token", "content": msg.content})
+                        customer_done = True
 
                 # === 客户 LLM 逐 Token 流式输出 ===
                 elif kind == "on_chat_model_stream":
                     chunk = data.get("chunk")
-                    # 使用 langgraph_node 判断来源（最可靠），或用 dm_finished 状态判断
-                    is_customer_node = langgraph_node == "customer" or (dm_finished and langgraph_node != "dialogue_manager")
+                    # 使用 langgraph_node 判断来源
+                    is_customer_node = langgraph_node == "customer" and not customer_done
                     if chunk and hasattr(chunk, "content") and chunk.content and is_customer_node:
                         customer_reply += chunk.content
                         yield _sse({"type": "token", "content": chunk.content})
@@ -355,15 +362,16 @@ async def stream_chat(request: ChatSendRequest):
             yield _sse({"type": "error", "content": f"系统错误: {str(e)}"})
 
         # === 最终结果 ===
-        is_finished = current_stage in [
+        is_finished = (current_stage in [
             DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
             DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
-        ]
+        ]) and (session.decision_strike >= DECISION_STRIKES_REQUIRED)
         session_manager.update_session(
             session.session_id,
             turn_count=turn_count,
             current_stage=current_stage,
             is_finished=is_finished,
+            decision_strike=session.decision_strike,
         )
 
         yield _sse({
