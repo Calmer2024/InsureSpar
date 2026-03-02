@@ -13,4 +13,20 @@ __pycache__/
 /dataSources/
 /dataSources.local.xml
 
-/.idea
+# 忽略 PyCharm 配置文件
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# 忽略 Python 缓存和虚拟环境
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# 忽略前端依赖和构建产物
+node_modules/
+dist/
+.DS_Store
