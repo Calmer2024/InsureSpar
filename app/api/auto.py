@@ -183,6 +183,7 @@ async def auto_step(request: AutoStepRequest):
             "force_objection": False,
             "stage_reasoning": "",
             "decision_strike": session.decision_strike,
+            "pending_shutdown": session.pending_shutdown,
         }
         config = {"configurable": {"thread_id": session.session_id}}
         customer_done = False  # 客户是否已完成回复
@@ -259,14 +260,32 @@ async def auto_step(request: AutoStepRequest):
         if customer_reply:
             session_manager.add_conversation_turn(session.session_id, "customer", customer_reply)
 
-        # 更新会话状态 (连续 N 轮才算结束)
-        is_finished = (current_stage in DECISION_STAGES) and (session.decision_strike >= DECISION_STRIKES_REQUIRED)
+        # 优雅关机 (Graceful Shutdown) 逻辑判定
+        is_finished = False
+        pending_shutdown = session.pending_shutdown
+
+        if pending_shutdown:
+            # 如果这已经是最后告别的一轮了，那本轮一结束，就是真正的彻底结束
+            is_finished = True
+        else:
+            # 看看本轮结束时，是否达到了要求进入挂起告别状态的条件
+            if (current_stage in DECISION_STAGES) and (session.decision_strike >= DECISION_STRIKES_REQUIRED):
+                pending_shutdown = True
+                print("⚠️ [对话管理] 达成决策条件，进入 pending_shutdown 最后告别回合并塞入暗号。")
+                # 塞入暗号给下一轮的 SalesAgent 看
+                session_manager.add_conversation_turn(
+                    session.session_id, 
+                    "system", 
+                    "【系统通知：客户已做出最终决定，对话即将在本轮结束后彻底关闭。请向客户进行简短的礼貌告别或确认（如：好的，马上为您发送方案，祝您生活愉快），不要再引入任何新话题。】"
+                )
+
         session_manager.update_session(
             session.session_id,
             turn_count=turn_count,
             current_stage=current_stage,
             is_finished=is_finished,
             decision_strike=session.decision_strike,
+            pending_shutdown=pending_shutdown,
         )
 
         # 推送本轮完成事件
@@ -278,6 +297,7 @@ async def auto_step(request: AutoStepRequest):
             "stage_label": STAGE_LABELS.get(current_stage, current_stage),
             "turn_count": turn_count,
             "is_finished": is_finished,
+            "is_pending_shutdown": pending_shutdown,
         })
 
         # 获取上一轮评分用于连贯性参考
@@ -353,7 +373,7 @@ async def get_auto_status(session_id: str):
 async def get_final_report(session_id: str):
     """
     **功能**: 当对话结束（成交/明确拒绝/待跟进）后，总结一整局的能力表现并生成报告。
-    
+
     **处理逻辑**:
     1. 读取当前会话每一轮的考官打分日志。
     2. 将整局对话合并提炼，发送给大模型（AI 总监）。
@@ -375,11 +395,11 @@ async def get_final_report(session_id: str):
         turn_count=session.turn_count,
         strategy_id=session.strategy_id,
     )
-    
+
     # 持久化到数据库
     if "error" not in report:
         session_manager.save_final_report(session_id, report)
-        
+
     return report
 
 

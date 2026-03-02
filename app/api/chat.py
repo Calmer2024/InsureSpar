@@ -15,7 +15,7 @@ from app.schemas.chat_schema import (
 from app.core.config import PERSONAS, DECISION_STRIKES_REQUIRED
 from app.services.session_manager import session_manager
 from app.agents.customer_graph import customer_graph
-from app.agents.evaluator import evaluate_turn
+from app.agents.evaluator import evaluate_turn, generate_final_report
 from app.agents.state import DialogueStage
 
 router = APIRouter(prefix="/api", tags=["人机手动对练 (Manual)"])
@@ -79,6 +79,7 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
         "force_objection": False,
         "stage_reasoning": "",
         "decision_strike": session.decision_strike,
+        "pending_shutdown": session.pending_shutdown,
     }
 
     # 使用 session_id 作为 LangGraph 的 thread_id
@@ -98,11 +99,28 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
     turn_count = result.get("turn_count", session.turn_count)
     tool_calls_log = result.get("tool_calls_log", [])
 
-    # 判断是否结束
-    is_finished = (current_stage in [
-        DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
-        DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
-    ]) and (result.get("decision_strike", 0) >= DECISION_STRIKES_REQUIRED)
+    # 判断是否结束 (优雅关机逻辑)
+    is_finished = False
+    pending_shutdown = session.pending_shutdown
+
+    if pending_shutdown:
+        # 已完成最后告别，彻底终结
+        is_finished = True
+    else:
+        # 本轮结束时是否达到挂起告别条件
+        hit_decision = (current_stage in [
+            DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
+            DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
+        ]) and (result.get("decision_strike", 0) >= DECISION_STRIKES_REQUIRED)
+
+        if hit_decision:
+            pending_shutdown = True
+            print("⚠️ [手动模式] 达成决策条件，进入 pending_shutdown 最后告别回合。")
+            session_manager.add_conversation_turn(
+                session.session_id, 
+                "system", 
+                "【系统通知：客户已做出最终决定，对话即将在本轮结束后彻底关闭。请您进行简短的礼貌告别或确认（如：好的，马上为您发送方案，祝您生活愉快），不要再引入任何新话题。】"
+            )
     
     session.decision_strike = result.get("decision_strike", session.decision_strike)
 
@@ -112,6 +130,7 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
         turn_count=turn_count,
         current_stage=current_stage,
         is_finished=is_finished,
+        pending_shutdown=pending_shutdown,
     )
 
     # 记录到会话历史以便考官使用最近上下文
@@ -156,6 +175,7 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
         turn_count=turn_count,
         tool_calls_log=tool_calls_log,
         is_finished=is_finished,
+        is_pending_shutdown=pending_shutdown,
     )
 
 
@@ -301,6 +321,7 @@ async def stream_chat(request: ChatSendRequest):
             "force_objection": False,
             "stage_reasoning": "",
             "decision_strike": session.decision_strike,
+            "pending_shutdown": session.pending_shutdown,
         }
         config = {"configurable": {"thread_id": session.session_id}}
 
@@ -405,17 +426,35 @@ async def stream_chat(request: ChatSendRequest):
         except Exception as e:
             yield _sse({"type": "error", "content": f"系统错误: {str(e)}"})
 
-        # === 最终结果 ===
-        is_finished = (current_stage in [
-            DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
-            DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
-        ]) and (session.decision_strike >= DECISION_STRIKES_REQUIRED)
+        # === 优雅关机 (Graceful Shutdown) 逻辑判定 ===
+        is_finished = False
+        pending_shutdown = session.pending_shutdown
+
+        if pending_shutdown:
+            # 已完成最后告别，彻底终结
+            is_finished = True
+        else:
+            hit_decision = (current_stage in [
+                DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
+                DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
+            ]) and (session.decision_strike >= DECISION_STRIKES_REQUIRED)
+            
+            if hit_decision:
+                pending_shutdown = True
+                print("⚠️ [流式分析] 达成决策条件，进入 pending_shutdown 最后告别回合并塞入暗号。")
+                session_manager.add_conversation_turn(
+                    session.session_id, 
+                    "system", 
+                    "【系统通知：客户已做出最终决定，对话即将在本轮结束后彻底关闭。请向客户进行简短的礼貌告别或确认（如：好的，马上为您发送方案，祝您生活愉快），不要再引入任何新话题。】"
+                )
+
         session_manager.update_session(
             session.session_id,
             turn_count=turn_count,
             current_stage=current_stage,
             is_finished=is_finished,
             decision_strike=session.decision_strike,
+            pending_shutdown=pending_shutdown,
         )
 
         # 记录到会话历史以便考官使用最近上下文
@@ -431,6 +470,7 @@ async def stream_chat(request: ChatSendRequest):
             "turn_count": turn_count,
             "is_finished": is_finished,
             "tool_calls_log": tool_logs,
+            "is_pending_shutdown": pending_shutdown,
         })
 
         # 获取上一轮评分
@@ -458,6 +498,42 @@ async def stream_chat(request: ChatSendRequest):
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
+
+# ==========================================
+# 终极评估报告
+# ==========================================
+@router.get("/session/{session_id}/final-report", summary="生成并获取终极能力评估报告")
+async def get_final_report(session_id: str):
+    """
+    **功能**: 当对话结束（成交/明确拒绝/待跟进）后，总结一整局的能力表现并生成报告。
+
+    **处理逻辑**:
+    1. 读取当前会话每一轮的考官打分日志。
+    2. 将整局对话合并提炼，发送给大模型（AI 总监）。
+    3. 产出两项核心内容：
+       - `review`: 500字左右的总监综合点评。
+       - `radar`: 6个维度（沟通、产品熟悉度、合规、异议处理、需求挖掘、促成）的具体评分(1-10分)。
+    4. **持久化**: 同时将最终报告异步存入 `final_reports` 表。
+    """
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"会话 '{session_id}' 不存在")
+
+    report = await generate_final_report(
+        session_id=session_id,
+        persona_id=session.persona_id,
+        conversation_history=session.conversation_history,
+        evaluations=session.evaluations,
+        final_stage=session.current_stage,
+        turn_count=session.turn_count,
+        strategy_id=session.strategy_id,
+    )
+
+    # 持久化到数据库
+    if "error" not in report:
+        session_manager.save_final_report(session_id, report)
+
+    return report
 
 def _sse(data: dict) -> str:
     """格式化 SSE 事件"""

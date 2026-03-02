@@ -37,6 +37,7 @@ class ChatSendResponse(BaseModel):
     turn_count: int = Field(description="当前回合数")
     tool_calls_log: list[str] = Field(default_factory=list, description="本轮工具调用日志")
     is_finished: bool = Field(default=False, description="对话是否已结束（进入决策状态）")
+    is_pending_shutdown: bool = Field(default=False, description="对话是否即将结束，进入最后告别阶段")
 
 
 class MessageItem(BaseModel):

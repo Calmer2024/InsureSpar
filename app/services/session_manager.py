@@ -18,6 +18,7 @@ class SessionData:
     turn_count: int = 0
     current_stage: str = "INTRODUCTION"
     is_finished: bool = False
+    pending_shutdown: bool = False                   # 优雅关机标志（准备进行最后一次告别）
     decision_strike: int = 0                         # 连续判定为决策状态的次数
     evaluations: list = field(default_factory=list)  # EvaluationItem 字典列表
     # Auto-Agent 专用字段
@@ -72,7 +73,7 @@ class SessionManager:
         """获取指定会话"""
         return self._sessions.get(session_id)
 
-    def update_session(self, session_id: str, turn_count: int, current_stage: str, is_finished: bool = False, decision_strike: int = 0):
+    def update_session(self, session_id: str, turn_count: int, current_stage: str, is_finished: bool = False, decision_strike: int = 0, pending_shutdown: bool = False):
         """更新会话状态"""
         session = self._sessions.get(session_id)
         if session:
@@ -80,6 +81,7 @@ class SessionManager:
             session.current_stage = current_stage
             session.is_finished = is_finished
             session.decision_strike = decision_strike
+            session.pending_shutdown = pending_shutdown
             
             # 写入数据库
             db = SessionLocal()

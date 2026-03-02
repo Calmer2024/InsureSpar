@@ -57,15 +57,23 @@ def customer_node(state: AgentState) -> dict:
     persona_id = state.get("persona_id", "hard_boss")
     persona = PERSONAS.get(persona_id, {})
     stage = state.get("current_stage", DialogueStage.INTRODUCTION)
-    # 回合计数 +1（在客户回复时递增，因为客户是本轮第一个执行的节点）
-    turn_count = state.get("turn_count", 0) + 1
+    # 回合计数逻辑：仅由于人类/销售发言触发才会增加回合数，避免使用工具时反复循环累加
+    turn_count = state.get("turn_count", 0)
+    messages = state.get("messages", [])
+    is_first_entry = bool(messages and messages[-1].type == "human")
+    
+    if is_first_entry:
+        turn_count += 1
+
     force_objection = state.get("force_objection", False)
+    pending_shutdown = state.get("pending_shutdown", False)
 
-    print(f"\n{'='*50}")
-    print(f"🚦 第 {turn_count} 轮开始 | 当前阶段: {stage}")
-    print(f"👤 [客户Agent] 画像={persona.get('name', persona_id)}, 第{turn_count}轮")
+    if is_first_entry:
+        print(f"\n{'='*50}")
+        print(f"🚦 第 {turn_count} 轮开始 | 当前阶段: {stage}{' (准备关闭)' if pending_shutdown else ''}")
+        print(f"👤 [客户Agent] 画像={persona.get('name', persona_id)}, 第{turn_count}轮")
 
-    stage_instructions = _build_stage_instructions(stage, turn_count, force_objection, persona)
+    stage_instructions = _build_stage_instructions(stage, turn_count, force_objection, persona, pending_shutdown)
 
     sys_prompt_content = f"""你正在参与保险销售对练，完美扮演以下客户，绝不暴露AI身份。
 
@@ -89,7 +97,7 @@ def customer_node(state: AgentState) -> dict:
 {stage_instructions}
 
 【工具使用】
-如果你懂保险且有能力查核，可调用工具查证销售的说法。如果你的画像表明你不懂或不看条款，则不调用。
+如果你懂保险且有能力查核，可调用工具查证销售的说法。如果你的画像表明你不懂或不看条款，则绝对不调用进行查证核实。
 
 直接以第一人称与销售对话，不要带前缀或内心OS。回复简洁有力，不超过100字。"""
 
@@ -133,6 +141,18 @@ def dialogue_manager_node(state: AgentState) -> dict:
     两者都是本轮的，时序完全对齐！
     """
     turn_count = state.get("turn_count", 1)
+    pending_shutdown = state.get("pending_shutdown", False)
+
+    # 如果已经在准备关闭阶段，直接继承上一阶段并返回，不再进行任何评判
+    if pending_shutdown:
+        print(f"🚦 [状态判定] 当前处于 pending_shutdown 告别阶段，跳过判断，直接完成。")
+        return {
+            "current_stage": state.get("current_stage", DialogueStage.DECISION_SIGN),
+            "force_objection": False,
+            "tool_calls_log": [],
+            "stage_reasoning": "会话已彻底关闭",
+            "decision_strike": state.get("decision_strike", 2),
+        }
 
     # ========== 提取本轮的完整一来一回 ==========
     sales_msg = ""
@@ -239,8 +259,14 @@ def dialogue_manager_node(state: AgentState) -> dict:
 # ==========================================
 # 客户节点的阶段行为指令
 # ==========================================
-def _build_stage_instructions(stage: str, turn_count: int, force_objection: bool, persona: dict) -> str:
+def _build_stage_instructions(stage: str, turn_count: int, force_objection: bool, persona: dict, pending_shutdown: bool = False) -> str:
     """根据当前阶段和状态构建行为指令"""
+
+    if pending_shutdown:
+        return """【⚠️ 强制指令：最后告别阶段】
+销售正在与你进行最后的礼貌告别。
+你必须只用依据简短、礼貌的话进行回应（如“好的，再见”，“谢谢，拜拜”）。
+绝对不可以提出任何新的问题、新的异议或者开启新话题！"""
 
     if force_objection:
         triggers = persona.get("objection_triggers", [])
