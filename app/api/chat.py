@@ -114,6 +114,18 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
         is_finished=is_finished,
     )
 
+    # 记录到会话历史以便考官使用最近上下文
+    session_manager.add_conversation_turn(session.session_id, "sales", request.message)
+    if customer_reply:
+        session_manager.add_conversation_turn(session.session_id, "customer", customer_reply)
+
+    # 获取上一轮评分用于连贯性参考
+    prev_scores = None
+    if session.evaluations:
+        valid_evals = [e for e in session.evaluations if e.get("professionalism_score", -1) >= 0]
+        if valid_evals:
+            prev_scores = valid_evals[-1]
+
     # 异步后台评分（不阻塞主流程）
     background_tasks.add_task(
         evaluate_turn,
@@ -122,6 +134,9 @@ async def send_message(request: ChatSendRequest, background_tasks: BackgroundTas
         sales_msg=request.message,
         customer_reply=customer_reply,
         persona_id=session.persona_id,
+        current_stage=current_stage,
+        conversation_history=session.conversation_history,
+        prev_scores=prev_scores,
     )
 
     # 阶段中文标签映射
@@ -403,6 +418,11 @@ async def stream_chat(request: ChatSendRequest):
             decision_strike=session.decision_strike,
         )
 
+        # 记录到会话历史以便考官使用最近上下文
+        session_manager.add_conversation_turn(session.session_id, "sales", request.message)
+        if customer_reply:
+            session_manager.add_conversation_turn(session.session_id, "customer", customer_reply)
+
         yield _sse({
             "type": "done",
             "customer_reply": customer_reply,
@@ -420,13 +440,15 @@ async def stream_chat(request: ChatSendRequest):
             if valid_evals:
                 prev_scores = valid_evals[-1]
 
-        # 后台异步评分（传入上轮评分）
+        # 后台异步评分（传入上轮评分与最近对话上下文）
         asyncio.create_task(evaluate_turn(
             session_id=session.session_id,
             turn_count=turn_count,
             sales_msg=request.message,
             customer_reply=customer_reply,
             persona_id=session.persona_id,
+            current_stage=current_stage,
+            conversation_history=session.conversation_history,
             prev_scores=prev_scores,
         ))
 

@@ -21,7 +21,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:95515@localhost:3
 # ==========================================
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-LLM_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-e6a0efee40b14d7a84dc2b6af048bd7d")
+LLM_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-d95700b307ec4a18a1909b6564b4ad11")
 
 # ==========================================
 # 业务逻辑配置

@@ -49,35 +49,40 @@ evaluator_llm = ChatOpenAI(
 # ==========================================
 # 阶段一：事实提取（从销售话术中抽取可核查的声明）
 # ==========================================
-async def _extract_fact_claims(sales_msg: str) -> FactClaimsExtraction:
-    """让 LLM 从销售话术中提取所有事实性声明"""
+async def _extract_fact_claims(sales_msg: str, customer_reply: str, recent_context: str = "") -> FactClaimsExtraction:
+    """让 LLM 从销售话术中提取所有事实性声明，结合最近的上下文"""
     import json
     from openai import AsyncOpenAI
     
     client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
     
-    system_prompt = """你是一个事实核查助手。请分析销售话术，提取其中可以被数据核实的事实性声明。
+    system_prompt = """你是一个事实核查助手。请仔细阅读【对话上下文】以及本轮【销售说】的话术，提取销售话语中可以被数据核实的事实性声明。
 请严格按以下 JSON 格式输出（必须包含所有字段）：
 
 EXAMPLE JSON OUTPUT:
 {
   "has_premium_claim": true,
-  "premium_details": "45岁男性，20年交，10万保额，声称每年保费4800元",
+  "premium_details": "45岁男性，20年交，100万保额，声称每年保费43500元",
   "has_cash_value_claim": false,
   "cash_value_details": "",
   "has_rule_claim": true,
   "rule_query": "高血压能否投保",
-  "summary": "销售声称45岁男性20年交10万保额每年4800元，并说高血压可以正常投保"
+  "summary": "销售声称45岁男性20年交100万保额每年43500元，并说高血压可以正常投保"
 }"""
 
-    user_prompt = f"""销售说："{sales_msg}"
+    user_prompt = f"""【最近对话上下文】
+{recent_context}
 
-请判断：
-1. 销售是否提到了具体的保费金额？（如"每年交4800元"）
-   - 如果有，提取涉及的年龄、性别、交费期、保额和声称的金额
-2. 销售是否提到了现金价值/退保金额？（如"第10年退保能拿回3万"）
-   - 如果有，提取涉及的性别、年龄、交费期、保单年度和声称的金额
-3. 销售是否提到了保险条款、核保规则、理赔条件等？（如"高血压可以投保"、"等待期内也能赔"）
+【本轮待核单词】
+销售说："{sales_msg}"
+客户回应："{customer_reply}"
+
+请判断本轮【销售说】的内容中：
+1. 是否提到了具体的保费金额？（如"每年交43500元"）
+   - 如果有，提取涉及的年龄、性别、交费期、保额和声称的金额。如果保额未直接提及，请从【对话上下文】中寻找客户或销售之前确认过的保额。
+2. 是否提到了现金价值/退保金额？（如"第10年退保能拿回3万"）
+   - 如果有，同上提取关键要素，缺失的要素从上下文中推断。
+3. 是否提到了保险条款、核保规则、理赔条件等？
    - 如果有，提取核心声明作为查询关键词"""
 
     try:
@@ -106,7 +111,7 @@ EXAMPLE JSON OUTPUT:
 # ==========================================
 # 阶段二：工具核查（用工具检验事实是否属实）
 # ==========================================
-async def _verify_facts(claims: FactClaimsExtraction) -> str:
+async def _verify_facts(claims: FactClaimsExtraction, recent_context: str = "") -> str:
     """根据提取的声明，调用工具获取真实数据作为铁证"""
     evidence_parts = []
 
@@ -114,8 +119,8 @@ async def _verify_facts(claims: FactClaimsExtraction) -> str:
     if claims.has_premium_claim and claims.premium_details:
         print(f"🔧 [考官取证] 正在核查保费声明...")
         try:
-            # 尝试从描述中解析参数（用 LLM 辅助解析更可靠，这里用简单正则做 fallback）
-            params = await _parse_premium_params(claims.premium_details)
+            # 尝试从描述和上下文中解析参数
+            params = await _parse_premium_params(claims.premium_details, recent_context)
             if params:
                 actual_result = query_premium_rate.invoke(params)
                 evidence_parts.append(
@@ -132,7 +137,7 @@ async def _verify_facts(claims: FactClaimsExtraction) -> str:
     if claims.has_cash_value_claim and claims.cash_value_details:
         print(f"🔧 [考官取证] 正在核查现金价值声明...")
         try:
-            params = await _parse_cash_value_params(claims.cash_value_details)
+            params = await _parse_cash_value_params(claims.cash_value_details, recent_context)
             if params:
                 actual_result = query_cash_value.invoke(params)
                 evidence_parts.append(
@@ -184,19 +189,24 @@ class CashValueParams(BaseModel):
     base_amount: int = Field(default=10000, description="基本保额")
 
 
-async def _parse_premium_params(details: str) -> dict | None:
-    """用 LLM 从自然语言描述中提取保费查询参数"""
+async def _parse_premium_params(details: str, recent_context: str = "") -> dict | None:
+    """用 LLM 从自然语言描述和最近上下文中提取保费查询参数"""
     try:
-        prompt = f"""从以下描述中提取保费查询参数，严格输出 JSON：
-"{details}"
+        prompt = f"""从以下核查对象和对话上下文中提取精准的保费查询参数，严格输出 JSON：
+
+【核查对象】"{details}"
+
+【对话上下文】
+{recent_context}
 
 特别规则：
-1. 重疾险常规保额一般在 10万~100万之间（如 300000 或 500000）。
-2. 如果销售话术或记录中没有明确提到保额金额，请默认填入 500000 (50万) 以保证工具能运行测试。
-3. base_amount 必须是数字格式。
+1. 重疾险常规保额一般在 10万~100万之间（如 300000 相当于30万，1000000 相当于100万）。
+2. 如果【核查对象】中没有明确提到保额金额，请务必仔细阅读【对话上下文】寻找客户或销售之前敲定的保额金额。
+3. base_amount 必须是确切的数字格式（如有）。请确保它与上下文中的数字完全匹配。如果不确定，尝试寻找上下文最可能的合理保额。
+4. 年龄、性别、交费期也需要补齐，默认可以参考画像。
 
 输出格式：
-{{"age": 45, "gender": "男", "pay_period": 20, "base_amount": 500000}}"""
+{{"age": 45, "gender": "男", "pay_period": 20, "base_amount": 1000000}}"""
 
         structured = evaluator_llm.with_structured_output(PremiumParams, method="json_mode")
         result = structured.invoke(prompt)
@@ -207,19 +217,23 @@ async def _parse_premium_params(details: str) -> dict | None:
         return None
 
 
-async def _parse_cash_value_params(details: str) -> dict | None:
+async def _parse_cash_value_params(details: str, recent_context: str = "") -> dict | None:
     """用 LLM 从自然语言描述中提取现金价值查询参数"""
     try:
-        prompt = f"""从以下描述中提取现金价值查询参数，严格输出 JSON：
-"{details}"
+        prompt = f"""从以下核查对象和对话上下文中提取现金价值查询参数，严格输出 JSON：
+
+【核查对象】"{details}"
+
+【对话上下文】
+{recent_context}
 
 特别规则：
-1. 重疾险常规保额一般在 10万~100万之间（如 300000 或 500000）。
-2. 如果销售话术或记录中没有明确提到保额金额，请默认填入 500000 (50万) 以保证工具能运行测试。
+1. 重疾险常规保额一般在 10万~100万之间。
+2. 同保费查询一样，务必结合【对话上下文】明确准确的保额 (base_amount) 提取。
 3. base_amount 必须是数字格式。
 
 输出格式：
-{{"gender": "男", "age": 45, "pay_period": 20, "year": 10, "base_amount": 500000}}"""
+{{"gender": "男", "age": 45, "pay_period": 20, "year": 10, "base_amount": 1000000}}"""
 
         structured = evaluator_llm.with_structured_output(CashValueParams, method="json_mode")
         result = structured.invoke(prompt)
@@ -240,16 +254,14 @@ async def evaluate_turn(
     sales_msg: str,
     customer_reply: str,
     persona_id: str,
+    current_stage: str = "未知阶段",
+    conversation_history: list = None,
     sales_tool_calls: list = None,
     prev_scores: dict = None,
 ):
     """
     升级版考官：先取证，再评分。
-    流程：提取事实声明 → 调用工具核查 → 合并销售工具日志 → 带着铁证打分
-    
-    参数:
-        sales_tool_calls: 销售Agent本轮的工具调用记录 [{"tool": "xxx", "args": "xxx", "result": "xxx"}, ...]
-        prev_scores: 上一轮的评分 {"professionalism_score": 8, "compliance_score": 7, "strategy_score": 6}
+    加入了阶段感知和防循环机制。
     """
     import json
     from openai import AsyncOpenAI
@@ -261,11 +273,21 @@ async def evaluate_turn(
     print(f"⚖️ [考官] 开始后台评分: 会话={session_id}, 第{turn_count}轮")
     print(f"{'='*50}")
 
+    # 提取最近几轮对话上下文（取最近 6 条）
+    recent_context = ""
+    if conversation_history:
+        recent_msgs = conversation_history[-6:]
+        context_parts = []
+        for msg in recent_msgs:
+            role = "销售" if msg.get("role") == "sales" else "客户"
+            context_parts.append(f"{role}: {msg.get('content')}")
+        recent_context = "\n".join(context_parts)
+
     # ---- 阶段一：事实提取 ----
-    claims = await _extract_fact_claims(sales_msg)
+    claims = await _extract_fact_claims(sales_msg, customer_reply, recent_context)
 
     # ---- 阶段二：工具核查 ----
-    evidence = await _verify_facts(claims)
+    evidence = await _verify_facts(claims, recent_context)
 
     # ---- 阶段2.5：合并销售的工具调用日志 ----
     sales_tool_evidence = ""
@@ -276,41 +298,47 @@ async def evaluate_turn(
         sales_tool_evidence = "\n【📋 销售Agent本轮的工具调用记录（销售自己查到的数据）】\n" + "\n".join(parts)
         print(f"📋 [考官] 收到销售工具日志 {len(sales_tool_calls)} 条，将作为铁证参考")
 
-    # ---- 构建上轮评分参考 ----
-    prev_ref = ""
-    if prev_scores and prev_scores.get("professionalism_score", -1) >= 0:
-        prev_ref = f"""
-【📊 上一轮（第{turn_count-1}轮）评分参考】
-专业={prev_scores.get('professionalism_score')} 合规={prev_scores.get('compliance_score')} 策略={prev_scores.get('strategy_score')}
-建议: {prev_scores.get('overall_advice', '')}
-⚠️ 本轮打分应参考上轮，保持连贯性。如有变化请在评语中解释原因。"""
-
     # ---- 阶段三：带证据评分 ----
     client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
     
-    system_prompt = f"""你是保险销售考官。严格打分，基于事实核查报告和销售工具调用记录。
+    # 移除上一轮建议的注入，仅保留分数作为参考，防止复读机
+    prev_score_str = ""
+    if prev_scores and prev_scores.get("professionalism_score", -1) >= 0:
+        prev_score_str = f"上一轮得分参考：专业={prev_scores.get('professionalism_score')} 合规={prev_scores.get('compliance_score')} 策略={prev_scores.get('strategy_score')}"
 
-【判卷标准】
-1. 专业性 (0-10)：销售数据是否与工具核查一致？如严重不符≤5分，曲解条款≤2分
-2. 合规性 (0-10)：有无违规承诺？是否跳过必要流程？
-3. 策略 (0-10)：是否切中客户痛点？是否生硬推销？
+    system_prompt = f"""你是保险销售对练考官。目前的会话阶段是：【{current_stage}】。
+请针对**本轮**表现，依据事实核查报告和销售的话术，严格独立打分。不要机械重复之前的建议。
 
-⚠️ 重要：如果"销售工具调用记录"和"考官核查报告"都存在，以销售自己查到的数据为准来判断销售话术是否准确。考官核查仅作参考补充。
+【阶段判卷重点】
+- 破冰与探寻：重点看是否建立基础信任、是否挖掘隐患。没查户口不扣分。
+- 异议处理：重点看是否针对客户问题对答如流、数据准确、有效化解顾虑。
+- 方案报价与核保/促成：严查数字准确性，若出现虚假数据和违规承诺，请严厉惩罚。
+
+【判卷维度 (0-10)】
+1. 专业性：数据事实（保费等）与工具核查是否一致？造假≤3分。若未涉及数据可根据专业表达给分。
+2. 合规性：是否存在误导或隐瞒？（例如无根据承诺“肯定能理赔”、“收益极高”，该项请≤5分）。
+3. 策略性：结合当前【{current_stage}】阶段，策略是否得当？
+
+⚠️ 独立评估本轮。不要重复上一轮的评语或建议。提供针对当下的具体指导！
 
 输出必须包含以下7个JSON字段，分数必须是纯数字：
-{{"professionalism_score":8,"compliance_score":9,"strategy_score":5,"professionalism_comment":"评价","compliance_comment":"评价","strategy_comment":"评价","overall_advice":"建议"}}"""
+{{"professionalism_score":8,"compliance_score":9,"strategy_score":5,"professionalism_comment":"评价","compliance_comment":"评价","strategy_comment":"评价","overall_advice":"具体的建议，不要重复"}}"""
 
-    user_prompt = f"""【客户】{persona.get('demographics', '未知')} | 态度: {persona.get('insurance_awareness', '未知')} | 关注: {persona.get('core_focus', '未知')}
+    user_prompt = f"""【客户画像】{persona.get('demographics', '未知')} | 态度: {persona.get('insurance_awareness', '未知')} | 关注: {persona.get('core_focus', '未知')}
 隐藏机密：{persona.get('hidden_secrets', '无')}
 
-【本轮对话】
+【对话上下文参考】
+{recent_context}
+
+【本轮待打分内容】
+{prev_score_str}
 销售说：{sales_msg[:500]}
 客户反应：{customer_reply[:300]}
 {sales_tool_evidence}
 
-【🔍 考官独立核查报告】
+【🔍 考官独立事实核查报告】
 {evidence}
-{prev_ref}"""
+"""
 
     for attempt in range(max_retries):
         try:
@@ -383,25 +411,36 @@ async def generate_final_report(
     strategy_id: str = None,
 ) -> dict:
     """
-    生成终极评估报告：
-    1. 汇总所有轮次评分
-    2. 调用 LLM 生成500字总监综合点评
-    3. 输出6维雷达图数据
+    生成终极评估报告，包含底线惩罚机制和更长对话回溯。
     """
     import json
     from openai import AsyncOpenAI
 
     persona = PERSONAS.get(persona_id, {})
 
-    # ---- 1. 汇总评分 ----
+    # ---- 1. 汇总评分与惩罚逻辑 ----
     valid_evals = [e for e in evaluations if e.get("professionalism_score", -1) >= 0]
     if not valid_evals:
         return {"error": "没有有效的评分数据"}
 
-    avg_prof = round(sum(e["professionalism_score"] for e in valid_evals) / len(valid_evals), 1)
-    avg_comp = round(sum(e["compliance_score"] for e in valid_evals) / len(valid_evals), 1)
-    avg_strat = round(sum(e["strategy_score"] for e in valid_evals) / len(valid_evals), 1)
+    avg_prof = sum(e["professionalism_score"] for e in valid_evals) / len(valid_evals)
+    avg_comp = sum(e["compliance_score"] for e in valid_evals) / len(valid_evals)
+    avg_strat = sum(e["strategy_score"] for e in valid_evals) / len(valid_evals)
+    
+    # 致命错误“一票否决”机制：如果有任何一轮合规低于5分，最终平均分和合规分将被重罚
+    critical_compliance_fails = [e for e in valid_evals if e["compliance_score"] <= 5]
+    critical_prof_fails = [e for e in valid_evals if e["professionalism_score"] <= 5]
+    
+    if critical_compliance_fails:
+        avg_comp = min(avg_comp, 5.0)  # 合规均分封顶 5.0
+    if critical_prof_fails:
+        avg_prof = min(avg_prof, 6.0)
+
     avg_total = round((avg_prof + avg_comp + avg_strat) / 3, 1)
+    
+    avg_prof = round(avg_prof, 1)
+    avg_comp = round(avg_comp, 1)
+    avg_strat = round(avg_strat, 1)
 
     # 收集每轮评语
     turn_comments = []
@@ -412,17 +451,21 @@ async def generate_final_report(
             f"策略{e['strategy_score']}分({e.get('strategy_comment', '')[:40]})"
         )
 
-    # 构建对话摘要（节约 token，只取关键内容）
+    # 构建更长的对话摘要（最多50条，确保能看到破冰期的核心破茧）
     dialogue_summary = []
     for i, msg in enumerate(conversation_history):
         role_label = "销售" if msg.get("role") == "sales" else "客户"
-        content = msg.get("content", "")[:150]
+        content = msg.get("content", "")[:200]
         dialogue_summary.append(f"{role_label}: {content}")
 
     # ---- 2. LLM 生成总监点评 + 雷达图数据 ----
     client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
-    prompt = f"""你是保险销售总监。请对这位销售的一整局对练表现做出终极评估。
+    fatal_warning = ""
+    if critical_compliance_fails or critical_prof_fails:
+         fatal_warning = "\n⚠️【重要提醒】这位销售在过程中出现了严重的“合规短板（造假/违规承诺等）”或“数据事实错误”。最终评价中必须对此类致命错误提出极其严厉的批评和降级！不能仅仅简单看平均分！"
+
+    prompt = f"""你是保险销售总监。请结合每轮考官评分明细，对这位销售的一整局对练表现做出专业的终极评估。
 
 【客户画像】
 {persona.get('name', '未知')} | {persona.get('demographics', '未知')}
@@ -430,13 +473,14 @@ async def generate_final_report(
 
 【对话结局】{final_stage} | 共{turn_count}轮
 
-【各轮评分汇总】
+【各轮考官评分汇总】
 {chr(10).join(turn_comments)}
 
 平均分: 专业{avg_prof} | 合规{avg_comp} | 策略{avg_strat} | 综合{avg_total}
+{fatal_warning}
 
 【对话全文摘要】
-{chr(10).join(dialogue_summary[-20:])}
+{chr(10).join(dialogue_summary[-50:])}
 
 请输出以下 JSON，包含两部分：
 

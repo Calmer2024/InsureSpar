@@ -287,13 +287,15 @@ async def auto_step(request: AutoStepRequest):
             if valid_evals:
                 prev_scores = valid_evals[-1]
 
-        # 后台考官评分（传入销售工具日志 + 上轮评分）
+        # 后台考官评分（传入销售工具日志 + 上轮评分 + 最近对话上下文）
         asyncio.create_task(evaluate_turn(
             session_id=session.session_id,
             turn_count=turn_count,
             sales_msg=sales_message,
             customer_reply=customer_reply,
             persona_id=session.persona_id,
+            current_stage=current_stage,
+            conversation_history=session.conversation_history,
             sales_tool_calls=sales_tool_calls_log if sales_tool_calls_log else None,
             prev_scores=prev_scores,
         ))
