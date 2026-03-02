@@ -16,22 +16,23 @@ from app.tools.calculators import query_premium_rate, query_cash_value
 # 结构化输出模型
 # ==========================================
 class PremiumClaim(BaseModel):
-    age: int = Field(description="年龄", default=0)
-    gender: str = Field(description="性别", default="")
-    pay_period: int = Field(description="交费期", default=0)
-    base_amount: int = Field(description="保额", default=0)
-    claimed_premium: str = Field(description="声称的保费金额", default="")
-    target_insured: str = Field(description="被保人身份，如'本人'、'丈夫'、'孩子'")
+    age: int | None = Field(description="年龄", default=None)
+    gender: str | None = Field(description="性别", default=None)
+    pay_period: int | None = Field(description="交费期", default=None)
+    base_amount: int | None = Field(description="保额", default=None)
+    claimed_premium: str | None = Field(description="声称的保费金额", default=None)
+    target_insured: str = Field(description="被保人身份，如'本人'、'丈夫'、'孩子'", default="未知")
     description: str = Field(description="完整陈述，如 '45岁男性，20年交，100万保额，声称每年保费43500元'")
 
 
 class CashValueClaim(BaseModel):
-    gender: str = Field(description="性别", default="")
-    age: int = Field(description="年龄", default=0)
-    pay_period: int = Field(description="交费期", default=0)
-    year: int = Field(description="保单年度", default=0)
-    base_amount: int = Field(description="保额", default=0)
-    claimed_cash_value: str = Field(description="声称的金额", default="")
+    gender: str | None = Field(description="性别", default=None)
+    age: int | None = Field(description="年龄", default=None)
+    pay_period: int | None = Field(description="交费期", default=None)
+    year: int | None = Field(description="保单年度", default=None)
+    base_amount: int | None = Field(description="保额", default=None)
+    claimed_cash_value: str | None = Field(description="声称的金额", default=None)
+    target_insured: str = Field(description="被保人身份，如'本人'、'丈夫'、'孩子'", default="未知")
     description: str = Field(description="完整陈述，如 '第10年退保能拿回3万'")
 
 class FactClaimsExtraction(BaseModel):
@@ -39,7 +40,7 @@ class FactClaimsExtraction(BaseModel):
     premium_claims: list[PremiumClaim] = Field(default_factory=list, description="提取到的所有保费声明")
     cash_value_claims: list[CashValueClaim] = Field(default_factory=list, description="提取到的所有现金价值/退保声明")
     has_rule_claim: bool = Field(description="销售是否提到了保险条款、核保规则、理赔门槛等")
-    rule_query: str = Field(default="", description="如有规则声明，提取需核实的核心搜索词")
+    rule_query: str | None = Field(default=None, description="如有规则声明，提取需核实的核心搜索词")
     summary: str = Field(description="简要概括销售本轮话术中的核心事实性声明")
 
 def _build_mega_persona_anchor(persona: dict) -> str:
@@ -82,8 +83,8 @@ evaluator_llm = ChatOpenAI(
 # ==========================================
 # 阶段一：事实提取（从销售话术中抽取可核查的声明）
 # ==========================================
-async def _extract_fact_claims(sales_msg: str, customer_reply: str, recent_context: str = "", persona: dict = None) -> FactClaimsExtraction:
-    """让 LLM 从销售话术中提取所有事实性声明，结合最近的上下文和Mega-Persona"""
+async def _extract_fact_claims(sales_msg: str, customer_reply: str, conversation_history_text: str = "", persona: dict = None) -> FactClaimsExtraction:
+    """让 LLM 从销售话术中提取所有事实性声明，结合完整的上下文和Mega-Persona"""
     import json
     from openai import AsyncOpenAI
     
@@ -108,6 +109,7 @@ async def _extract_fact_claims(sales_msg: str, customer_reply: str, recent_conte
       "pay_period": 20,
       "base_amount": 1000000,
       "claimed_premium": "43500元",
+      "target_insured": "本人",
       "description": "45岁男性，20年交，100万保额，声称每年保费43500元"
     }}
   ],
@@ -116,11 +118,11 @@ async def _extract_fact_claims(sales_msg: str, customer_reply: str, recent_conte
   "rule_query": "高血压能否投保",
   "summary": "为45岁男性报价100万重疾险保费43500元，并解释高血压投保规则"
 }}
-如果保额、年龄、性别等要素本轮未提及，**必须**从上方的【客户绝对静态画像基座】或下方的【对话历史】中推断并坚决填入数字，不要填null。"""
+【指代消解与容错原则】请结合完整的【对话历史】推断这笔报价真实的被保人是谁（如丈夫、妻子或孩子）。如果对话历史中确实缺失年龄、保额或交费期等参数，**必须填入 null**，绝对不可强行套用客户本人的静态画像参数！"""
 
     # [动态尾部隔离] 增量对话与本轮话术放在 User Prompt 尾部
     user_prompt = f"""【对话历史】
-{recent_context}
+{conversation_history_text}
 
 【本轮待核单词】
 销售说："{sales_msg}"
@@ -162,8 +164,8 @@ async def _verify_facts(claims: FactClaimsExtraction) -> str:
     for claim in claims.premium_claims:
         print(f"🔧 [考官取证] 正在核查保费声明: {claim.description}")
         try:
-            if not all([claim.age, claim.gender, claim.pay_period, claim.base_amount]):
-                evidence_parts.append(f"⚠️ 【保费核查失败】由于缺少年龄、性别、缴费期或保额中的某项参数，无法验证保费：{claim.description}。请提醒销售必须明确这些前提。")
+            if claim.age is None or claim.gender is None or claim.pay_period is None or claim.base_amount is None:
+                evidence_parts.append(f"ℹ️ 【客观核查豁免】本轮销售的保费报价由于缺少具体对象或关键计算参数（如年龄、保额等，目前部分值为None），无法进行底层工具精确核查。请考官结合上下文，主观评判其话术的专业性，关于：{claim.description}，切勿判定为数据造假。")
                 continue
             
             # 由于Schema Pre-warming，直接提取强类型参数调用工具
@@ -187,8 +189,8 @@ async def _verify_facts(claims: FactClaimsExtraction) -> str:
     for cv_claim in claims.cash_value_claims:
         print(f"🔧 [考官取证] 正在核查现金价值声明: {cv_claim.description}")
         try:
-            if not all([cv_claim.age, cv_claim.gender, cv_claim.pay_period, cv_claim.year, cv_claim.base_amount]):
-                evidence_parts.append(f"⚠️ 【现金价值核查失败】由于缺少参数，无法验证：{cv_claim.description}。")
+            if cv_claim.age is None or cv_claim.gender is None or cv_claim.pay_period is None or cv_claim.year is None or cv_claim.base_amount is None:
+                evidence_parts.append(f"ℹ️ 【客观核查豁免】本轮销售的现金价值报价由于缺少具体对象或关键计算参数（目前部分值为None），无法进行精准工具核查。请考官结合上下文主观评判其专业性，关于：{cv_claim.description}，切勿判定为数据造假。")
                 continue
 
             actual_result = query_cash_value.invoke({
@@ -261,18 +263,18 @@ async def evaluate_turn(
     print(f"⚖️ [考官] 开始后台评分: 会话={session_id}, 第{turn_count}轮")
     print(f"{'='*50}")
 
-    # 提取最近几轮对话上下文（取最近 6 条）
-    recent_context = ""
+    # 构建完整对话文本当作前文历史
+    conversation_history_text = ""
     if conversation_history:
-        recent_msgs = conversation_history[-6:]
         context_parts = []
-        for msg in recent_msgs:
-            role = "销售" if msg.get("role") == "sales" else "客户"
-            context_parts.append(f"{role}: {msg.get('content')}")
-        recent_context = "\n".join(context_parts)
+        for msg in conversation_history:
+            if msg.get("role") in ["sales", "customer"]:
+                role = "销售" if msg.get("role") == "sales" else "客户"
+                context_parts.append(f"{role}: {msg.get('content')}")
+        conversation_history_text = "\n".join(context_parts)
 
     # ---- 阶段一：事实提取 ----
-    claims = await _extract_fact_claims(sales_msg, customer_reply, recent_context, persona)
+    claims = await _extract_fact_claims(sales_msg, customer_reply, conversation_history_text, persona)
 
     # ---- 阶段二：工具核查 ----
     evidence = await _verify_facts(claims)
@@ -317,13 +319,19 @@ async def evaluate_turn(
 2. 熔断法则 2（虚假承诺）：如果销售为了促单凭空编造核保/理赔通过率（如“哪怕患重病也包赔”），合规性必须 ≤ 3。
 3. 动态宽限期：如果处于【破冰与探寻】阶段，未做深度需求挖掘不扣合规分。如果在【异议处理/核保】阶段回避客户对于条款的直接疑问，专业分扣除 3 分。
 
+【策略灵活性原则】
+[教练旁白] 仅作参考。只要销售使用了合理有效的沟通策略推进了对话，即使没听教练的话也**不得扣减策略分**。只有当销售完全回避客户核心痛点、或者话术逻辑混乱时才扣分。
+
+【注意事项】
+全流程是销售说一句，客服回一句，你是在客户回复后进行评价，因此客户提出的问题不会被立即回复，因此客户最后一次提出的问题没被回复不应该扣分
+
 【判卷维度 (0-10)】
 1. 专业性：用语是否准确专业。数据事实（保费等）与工具核查是否一致？造假≤3分。
 2. 合规性：是否存在违背常理、误导、隐瞒的陈述？
 3. 策略性：结合当前阶段，话术或破局策略是否得当？
 
 输出必须包含以下7个JSON字段，分数必须是纯数字：
-{{"professionalism_score":8,"compliance_score":9,"strategy_score":5,"professionalism_comment":"评价","compliance_comment":"评价","strategy_comment":"评价","overall_advice":"具体、一针见血的建议，告诉销售下一句应该怎么改"}}"""
+{{"professionalism_score":8,"compliance_score":9,"strategy_score":5,"professionalism_comment":"评价","compliance_comment":"评价","strategy_comment":"评价","overall_advice":"具体、一针见血的建议，告诉销售下一句应该怎么改，严格限制在50字以内"}}"""
 
     user_prompt = f"""【阶段信息】
 目前所处环节：【{current_stage}】
@@ -340,9 +348,7 @@ async def evaluate_turn(
 【🔍 考官独立事实核查报告】
 {evidence}
 
-【策略灵活性原则】
-[教练旁白] 仅作为参考建议。你需要评估销售真实的发言是否有效地推进了当前阶段（如：是否安抚了情绪、是否用数据化解了异议、是否自然过渡到下个阶段）。
-如果销售没有采用教练的建议，但使用了自己合理且有效的沟通策略，**不得扣减策略分**。只有当销售完全回避客户核心痛点、或者话术逻辑混乱时才扣分。"""
+指示：结合以上的全部信息进行评分。"""
 
     for attempt in range(max_retries):
         try:

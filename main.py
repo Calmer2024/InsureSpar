@@ -2,6 +2,7 @@
 InsureSpar — 多智能体保险销售对练系统
 FastAPI 入口文件
 """
+import logging
 from fastapi import FastAPI
 from starlette.responses import HTMLResponse
 
@@ -10,6 +11,9 @@ from app.api.chat import router as chat_router
 from app.api.auto import router as auto_router
 from app.api.history import router as history_router
 from app.models.database import engine, Base
+
+# 关闭 Uvicorn 的 ACCESS 访问日志（避免反复刷屏）
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 # 初始化数据库表结构（生产环境建议用 Alembic，目前对练系统直接全量创建即可）
 Base.metadata.create_all(bind=engine)
