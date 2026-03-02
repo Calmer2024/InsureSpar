@@ -15,15 +15,47 @@ from app.tools.calculators import query_premium_rate, query_cash_value
 # ==========================================
 # 结构化输出模型
 # ==========================================
+class PremiumClaim(BaseModel):
+    age: int = Field(description="年龄", default=0)
+    gender: str = Field(description="性别", default="")
+    pay_period: int = Field(description="交费期", default=0)
+    base_amount: int = Field(description="保额", default=0)
+    claimed_premium: str = Field(description="声称的保费金额", default="")
+    target_insured: str = Field(description="被保人身份，如'本人'、'丈夫'、'孩子'")
+    description: str = Field(description="完整陈述，如 '45岁男性，20年交，100万保额，声称每年保费43500元'")
+
+
+class CashValueClaim(BaseModel):
+    gender: str = Field(description="性别", default="")
+    age: int = Field(description="年龄", default=0)
+    pay_period: int = Field(description="交费期", default=0)
+    year: int = Field(description="保单年度", default=0)
+    base_amount: int = Field(description="保额", default=0)
+    claimed_cash_value: str = Field(description="声称的金额", default="")
+    description: str = Field(description="完整陈述，如 '第10年退保能拿回3万'")
+
 class FactClaimsExtraction(BaseModel):
     """从销售话术中提取的事实性声明"""
-    has_premium_claim: bool = Field(description="销售是否提到了具体保费金额")
-    premium_details: str = Field(default="", description="如有保费声明，提取：年龄、性别、交费期、保额、声称的保费金额")
-    has_cash_value_claim: bool = Field(description="销售是否提到了现金价值或退保金额")
-    cash_value_details: str = Field(default="", description="如有现金价值声明，提取：性别、年龄、交费期、年度、声称的金额")
-    has_rule_claim: bool = Field(description="销售是否提到了保险条款、核保规则、理赔条件等")
-    rule_query: str = Field(default="", description="如有规则声明，提取需要核实的关键内容作为查询词")
+    premium_claims: list[PremiumClaim] = Field(default_factory=list, description="提取到的所有保费声明")
+    cash_value_claims: list[CashValueClaim] = Field(default_factory=list, description="提取到的所有现金价值/退保声明")
+    has_rule_claim: bool = Field(description="销售是否提到了保险条款、核保规则、理赔门槛等")
+    rule_query: str = Field(default="", description="如有规则声明，提取需核实的核心搜索词")
     summary: str = Field(description="简要概括销售本轮话术中的核心事实性声明")
+
+def _build_mega_persona_anchor(persona: dict) -> str:
+    """构建绝对静态的全家桶画像基座，用于 Prompt Caching 首部锚定"""
+    import json
+    # 只提取不会随对话轮数变化的静态信息
+    static_info = {
+        "Name": persona.get("name", "未知"),
+        "Demographics": persona.get("demographics", "未知"),
+        "Health_Status": persona.get("health_status", "未知"),
+        "Financial_Status": persona.get("financial_status", "未知"),
+        "Insurance_Awareness": persona.get("insurance_awareness", "未知"),
+        "Risk_Preference": persona.get("risk_preference", "未知"),
+        "Hidden_Secrets_DO_NOT_DISCLOSE": persona.get("hidden_secrets", "无")
+    }
+    return f"【客户绝对静态画像基座】\n```json\n{json.dumps(static_info, ensure_ascii=False, indent=2)}\n```\n⚠️该基座包含客户本人及潜在涉及家庭成员的全局设定，提取事实或打分时，务必从此处读取固定属性以填补缺失信息。"
 
 
 class EvaluationResult(BaseModel):
@@ -33,7 +65,8 @@ class EvaluationResult(BaseModel):
     professionalism_comment: str = Field(description="专业性点评")
     compliance_comment: str = Field(description="合规性点评")
     strategy_comment: str = Field(description="销售策略点评")
-    overall_advice: str = Field(description="一句话改进建议")
+    overall_advice: str = Field(
+        description="给销售的下一步改进建议。要求：1. 必须限制在50字以内；2. 一针见血，直接指出下一步行动点，不要写长篇示范话术。")
 
 
 # ==========================================
@@ -49,41 +82,51 @@ evaluator_llm = ChatOpenAI(
 # ==========================================
 # 阶段一：事实提取（从销售话术中抽取可核查的声明）
 # ==========================================
-async def _extract_fact_claims(sales_msg: str, customer_reply: str, recent_context: str = "") -> FactClaimsExtraction:
-    """让 LLM 从销售话术中提取所有事实性声明，结合最近的上下文"""
+async def _extract_fact_claims(sales_msg: str, customer_reply: str, recent_context: str = "", persona: dict = None) -> FactClaimsExtraction:
+    """让 LLM 从销售话术中提取所有事实性声明，结合最近的上下文和Mega-Persona"""
     import json
     from openai import AsyncOpenAI
     
     client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
     
-    system_prompt = """你是一个事实核查助手。请仔细阅读【对话上下文】以及本轮【销售说】的话术，提取销售话语中可以被数据核实的事实性声明。
-请严格按以下 JSON 格式输出（必须包含所有字段）：
+    persona_anchor = _build_mega_persona_anchor(persona or {})
 
-EXAMPLE JSON OUTPUT:
-{
-  "has_premium_claim": true,
-  "premium_details": "45岁男性，20年交，100万保额，声称每年保费43500元",
-  "has_cash_value_claim": false,
-  "cash_value_details": "",
+    # [静态系统Prompt区] 高阶复杂Schema预热
+    system_prompt = f"""你是一个严谨的事实核查助手。
+    
+{persona_anchor}
+
+请仔细阅读【对话历史】以及本轮的话术，提取销售话语中所有可以被数据核实的事实性声明。
+支持提取家庭组合方案，即如果销售同时给丈夫和妻子报价，你需要提取多个 premium_claims。
+
+请严格按以下 JSON 格式输出：
+{{
+  "premium_claims": [
+    {{
+      "age": 45,
+      "gender": "男",
+      "pay_period": 20,
+      "base_amount": 1000000,
+      "claimed_premium": "43500元",
+      "description": "45岁男性，20年交，100万保额，声称每年保费43500元"
+    }}
+  ],
+  "cash_value_claims": [],
   "has_rule_claim": true,
   "rule_query": "高血压能否投保",
-  "summary": "销售声称45岁男性20年交100万保额每年43500元，并说高血压可以正常投保"
-}"""
+  "summary": "为45岁男性报价100万重疾险保费43500元，并解释高血压投保规则"
+}}
+如果保额、年龄、性别等要素本轮未提及，**必须**从上方的【客户绝对静态画像基座】或下方的【对话历史】中推断并坚决填入数字，不要填null。"""
 
-    user_prompt = f"""【最近对话上下文】
+    # [动态尾部隔离] 增量对话与本轮话术放在 User Prompt 尾部
+    user_prompt = f"""【对话历史】
 {recent_context}
 
 【本轮待核单词】
 销售说："{sales_msg}"
 客户回应："{customer_reply}"
 
-请判断本轮【销售说】的内容中：
-1. 是否提到了具体的保费金额？（如"每年交43500元"）
-   - 如果有，提取涉及的年龄、性别、交费期、保额和声称的金额。如果保额未直接提及，请从【对话上下文】中寻找客户或销售之前确认过的保额。
-2. 是否提到了现金价值/退保金额？（如"第10年退保能拿回3万"）
-   - 如果有，同上提取关键要素，缺失的要素从上下文中推断。
-3. 是否提到了保险条款、核保规则、理赔条件等？
-   - 如果有，提取核心声明作为查询关键词"""
+请提取事实性声明。"""
 
     try:
         response = await client.chat.completions.create(
@@ -111,42 +154,57 @@ EXAMPLE JSON OUTPUT:
 # ==========================================
 # 阶段二：工具核查（用工具检验事实是否属实）
 # ==========================================
-async def _verify_facts(claims: FactClaimsExtraction, recent_context: str = "") -> str:
-    """根据提取的声明，调用工具获取真实数据作为铁证"""
+async def _verify_facts(claims: FactClaimsExtraction) -> str:
+    """根据提取的声明，直接调用底层工具进行计算，无需再次经过LLM解析参数"""
     evidence_parts = []
 
-    # 1. 核查保费声明
-    if claims.has_premium_claim and claims.premium_details:
-        print(f"🔧 [考官取证] 正在核查保费声明...")
+    # 1. 核查保费声明 (List)
+    for claim in claims.premium_claims:
+        print(f"🔧 [考官取证] 正在核查保费声明: {claim.description}")
         try:
-            # 尝试从描述和上下文中解析参数
-            params = await _parse_premium_params(claims.premium_details, recent_context)
-            if params:
-                actual_result = query_premium_rate.invoke(params)
-                evidence_parts.append(
-                    f"📊 【保费核查】\n"
-                    f"  销售声称：{claims.premium_details}\n"
-                    f"  实际数据：{actual_result}\n"
-                    f"  ⚠️ 如果两者数字不一致，说明销售报价不准确！"
-                )
-                print(f"  ✅ 保费核查完成")
+            if not all([claim.age, claim.gender, claim.pay_period, claim.base_amount]):
+                evidence_parts.append(f"⚠️ 【保费核查失败】由于缺少年龄、性别、缴费期或保额中的某项参数，无法验证保费：{claim.description}。请提醒销售必须明确这些前提。")
+                continue
+            
+            # 由于Schema Pre-warming，直接提取强类型参数调用工具
+            actual_result = query_premium_rate.invoke({
+                "age": claim.age,
+                "gender": claim.gender,
+                "pay_period": claim.pay_period,
+                "base_amount": claim.base_amount
+            })
+            evidence_parts.append(
+                f"📊 【保费核查】\n"
+                f"  销售声称：{claim.description}\n"
+                f"  考官查得的实际数据：{actual_result}\n"
+                f"  ⚠️ 如果销售报价与实际数据不一致，说明严重算错数！"
+            )
+            print(f"  ✅ 保费核查完成")
         except Exception as e:
             print(f"  ⚠️ 保费核查异常: {e}")
 
-    # 2. 核查现金价值声明
-    if claims.has_cash_value_claim and claims.cash_value_details:
-        print(f"🔧 [考官取证] 正在核查现金价值声明...")
+    # 2. 核查现金价值声明 (List)
+    for cv_claim in claims.cash_value_claims:
+        print(f"🔧 [考官取证] 正在核查现金价值声明: {cv_claim.description}")
         try:
-            params = await _parse_cash_value_params(claims.cash_value_details, recent_context)
-            if params:
-                actual_result = query_cash_value.invoke(params)
-                evidence_parts.append(
-                    f"📊 【现金价值核查】\n"
-                    f"  销售声称：{claims.cash_value_details}\n"
-                    f"  实际数据：{actual_result}\n"
-                    f"  ⚠️ 如果两者差距超过10%，说明销售给出的现金价值不准确！"
-                )
-                print(f"  ✅ 现金价值核查完成")
+            if not all([cv_claim.age, cv_claim.gender, cv_claim.pay_period, cv_claim.year, cv_claim.base_amount]):
+                evidence_parts.append(f"⚠️ 【现金价值核查失败】由于缺少参数，无法验证：{cv_claim.description}。")
+                continue
+
+            actual_result = query_cash_value.invoke({
+                "gender": cv_claim.gender,
+                "age": cv_claim.age,
+                "pay_period": cv_claim.pay_period,
+                "year": cv_claim.year,
+                "base_amount": cv_claim.base_amount
+            })
+            evidence_parts.append(
+                f"📊 【现金价值核查】\n"
+                f"  销售声称：{cv_claim.description}\n"
+                f"  考官查得的实际数据：{actual_result}\n"
+                f"  ⚠️ 如果缺口过大或数字对不上，说明销售虚假演示！"
+            )
+            print(f"  ✅ 现金价值核查完成")
         except Exception as e:
             print(f"  ⚠️ 现金价值核查异常: {e}")
 
@@ -171,78 +229,8 @@ async def _verify_facts(claims: FactClaimsExtraction, recent_context: str = "") 
     return "\n\n".join(evidence_parts)
 
 
-# ==========================================
-# 辅助：参数解析（用LLM从自然语言中提取工具参数）
-# ==========================================
-class PremiumParams(BaseModel):
-    age: int = Field(description="投保年龄")
-    gender: str = Field(description="性别，'男' 或 '女'")
-    pay_period: int = Field(description="交费期")
-    base_amount: int = Field(default=10000, description="基本保额")
-
-
-class CashValueParams(BaseModel):
-    gender: str = Field(description="性别，'男' 或 '女'")
-    age: int = Field(description="投保年龄")
-    pay_period: int = Field(description="交费期")
-    year: int = Field(description="保单年度")
-    base_amount: int = Field(default=10000, description="基本保额")
-
-
-async def _parse_premium_params(details: str, recent_context: str = "") -> dict | None:
-    """用 LLM 从自然语言描述和最近上下文中提取保费查询参数"""
-    try:
-        prompt = f"""从以下核查对象和对话上下文中提取精准的保费查询参数，严格输出 JSON：
-
-【核查对象】"{details}"
-
-【对话上下文】
-{recent_context}
-
-特别规则：
-1. 重疾险常规保额一般在 10万~100万之间（如 300000 相当于30万，1000000 相当于100万）。
-2. 如果【核查对象】中没有明确提到保额金额，请务必仔细阅读【对话上下文】寻找客户或销售之前敲定的保额金额。
-3. base_amount 必须是确切的数字格式（如有）。请确保它与上下文中的数字完全匹配。如果不确定，尝试寻找上下文最可能的合理保额。
-4. 年龄、性别、交费期也需要补齐，默认可以参考画像。
-
-输出格式：
-{{"age": 45, "gender": "男", "pay_period": 20, "base_amount": 1000000}}"""
-
-        structured = evaluator_llm.with_structured_output(PremiumParams, method="json_mode")
-        result = structured.invoke(prompt)
-        return {"age": result.age, "gender": result.gender,
-                "pay_period": result.pay_period, "base_amount": result.base_amount}
-    except Exception as e:
-        print(f"    ⚠️ 保费参数解析失败: {e}")
-        return None
-
-
-async def _parse_cash_value_params(details: str, recent_context: str = "") -> dict | None:
-    """用 LLM 从自然语言描述中提取现金价值查询参数"""
-    try:
-        prompt = f"""从以下核查对象和对话上下文中提取现金价值查询参数，严格输出 JSON：
-
-【核查对象】"{details}"
-
-【对话上下文】
-{recent_context}
-
-特别规则：
-1. 重疾险常规保额一般在 10万~100万之间。
-2. 同保费查询一样，务必结合【对话上下文】明确准确的保额 (base_amount) 提取。
-3. base_amount 必须是数字格式。
-
-输出格式：
-{{"gender": "男", "age": 45, "pay_period": 20, "year": 10, "base_amount": 1000000}}"""
-
-        structured = evaluator_llm.with_structured_output(CashValueParams, method="json_mode")
-        result = structured.invoke(prompt)
-        return {"gender": result.gender, "age": result.age,
-                "pay_period": result.pay_period, "year": result.year,
-                "base_amount": result.base_amount}
-    except Exception as e:
-        print(f"    ⚠️ 现金价值参数解析失败: {e}")
-        return None
+# 移除 _parse_premium_params 和 _parse_cash_value_params 
+# 因为 Schema Pre-warming 已经让我们在提取 Claims 的时候就拿到了强类型数字。
 
 
 # ==========================================
@@ -284,10 +272,10 @@ async def evaluate_turn(
         recent_context = "\n".join(context_parts)
 
     # ---- 阶段一：事实提取 ----
-    claims = await _extract_fact_claims(sales_msg, customer_reply, recent_context)
+    claims = await _extract_fact_claims(sales_msg, customer_reply, recent_context, persona)
 
     # ---- 阶段二：工具核查 ----
-    evidence = await _verify_facts(claims, recent_context)
+    evidence = await _verify_facts(claims)
 
     # ---- 阶段2.5：合并销售的工具调用日志 ----
     sales_tool_evidence = ""
@@ -301,44 +289,60 @@ async def evaluate_turn(
     # ---- 阶段三：带证据评分 ----
     client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
     
-    # 移除上一轮建议的注入，仅保留分数作为参考，防止复读机
-    prev_score_str = ""
-    if prev_scores and prev_scores.get("professionalism_score", -1) >= 0:
-        prev_score_str = f"上一轮得分参考：专业={prev_scores.get('professionalism_score')} 合规={prev_scores.get('compliance_score')} 策略={prev_scores.get('strategy_score')}"
+    # 构建静态画像基座
+    persona_anchor = _build_mega_persona_anchor(persona)
 
-    system_prompt = f"""你是保险销售对练考官。目前的会话阶段是：【{current_stage}】。
-请针对**本轮**表现，依据事实核查报告和销售的话术，严格独立打分。不要机械重复之前的建议。
+    # 构造历史对话日志，其中包含教练过往的旁白建议 (Feedback Ledger)
+    ledger_parts = []
+    if conversation_history:
+        for msg in conversation_history:
+            r = msg.get("role", "")
+            if r == "sales":
+                ledger_parts.append(f"销售：{msg.get('content')}")
+            elif r == "customer":
+                ledger_parts.append(f"客户：{msg.get('content')}")
+            elif r == "coach":
+                ledger_parts.append(f"🎯 [教练旁白指导销售]：{msg.get('content')}")
+    history_ledger = "\n".join(ledger_parts)
 
-【阶段判卷重点】
-- 破冰与探寻：重点看是否建立基础信任、是否挖掘隐患。没查户口不扣分。
-- 异议处理：重点看是否针对客户问题对答如流、数据准确、有效化解顾虑。
-- 方案报价与核保/促成：严查数字准确性，若出现虚假数据和违规承诺，请严厉惩罚。
+    # 【动态尾部隔离】将静态的画像与跨维度连坐惩罚矩阵 (Cross-Penalty Matrix) 放在 System Prompt，
+    # 动态的文本 (RAG Evidence / 本轮话术 / 上下文) 放于 User Prompt 尾部。
+    
+    system_prompt = f"""你是绝对严苛且逻辑自洽的保险销售考官。
+    
+{persona_anchor}
+
+【跨维度连坐惩罚矩阵 (Cross-Penalty Matrix)】
+1. 熔断法则 1（数字造假）：如果在比较“考官独立事实核查报告”与“销售发言”时，发现销售给出的保费、现金价值计算出错，导致专业性得分(professionalism_score) ≤ 3，则必须严惩误导行为，强制令合规性得分(compliance_score) ≤ 5。
+2. 熔断法则 2（虚假承诺）：如果销售为了促单凭空编造核保/理赔通过率（如“哪怕患重病也包赔”），合规性必须 ≤ 3。
+3. 动态宽限期：如果处于【破冰与探寻】阶段，未做深度需求挖掘不扣合规分。如果在【异议处理/核保】阶段回避客户对于条款的直接疑问，专业分扣除 3 分。
 
 【判卷维度 (0-10)】
-1. 专业性：数据事实（保费等）与工具核查是否一致？造假≤3分。若未涉及数据可根据专业表达给分。
-2. 合规性：是否存在误导或隐瞒？（例如无根据承诺“肯定能理赔”、“收益极高”，该项请≤5分）。
-3. 策略性：结合当前【{current_stage}】阶段，策略是否得当？
-
-⚠️ 独立评估本轮。不要重复上一轮的评语或建议。提供针对当下的具体指导！
+1. 专业性：用语是否准确专业。数据事实（保费等）与工具核查是否一致？造假≤3分。
+2. 合规性：是否存在违背常理、误导、隐瞒的陈述？
+3. 策略性：结合当前阶段，话术或破局策略是否得当？
 
 输出必须包含以下7个JSON字段，分数必须是纯数字：
-{{"professionalism_score":8,"compliance_score":9,"strategy_score":5,"professionalism_comment":"评价","compliance_comment":"评价","strategy_comment":"评价","overall_advice":"具体的建议，不要重复"}}"""
+{{"professionalism_score":8,"compliance_score":9,"strategy_score":5,"professionalism_comment":"评价","compliance_comment":"评价","strategy_comment":"评价","overall_advice":"具体、一针见血的建议，告诉销售下一句应该怎么改"}}"""
 
-    user_prompt = f"""【客户画像】{persona.get('demographics', '未知')} | 态度: {persona.get('insurance_awareness', '未知')} | 关注: {persona.get('core_focus', '未知')}
-隐藏机密：{persona.get('hidden_secrets', '无')}
+    user_prompt = f"""【阶段信息】
+目前所处环节：【{current_stage}】
 
-【对话上下文参考】
-{recent_context}
+【增长式对话台账 (含教练历史旁白)】
+{history_ledger}
 
-【本轮待打分内容】
-{prev_score_str}
+【动态尾部：核心核查对象】
+本轮最新的销售执行动作：
 销售说：{sales_msg[:500]}
 客户反应：{customer_reply[:300]}
 {sales_tool_evidence}
 
 【🔍 考官独立事实核查报告】
 {evidence}
-"""
+
+【策略灵活性原则】
+[教练旁白] 仅作为参考建议。你需要评估销售真实的发言是否有效地推进了当前阶段（如：是否安抚了情绪、是否用数据化解了异议、是否自然过渡到下个阶段）。
+如果销售没有采用教练的建议，但使用了自己合理且有效的沟通策略，**不得扣减策略分**。只有当销售完全回避客户核心痛点、或者话术逻辑混乱时才扣分。"""
 
     for attempt in range(max_retries):
         try:

@@ -102,6 +102,8 @@ async def sales_agent_step(
             messages.append(AIMessage(content=turn["content"]))
         elif turn["role"] == "customer":
             messages.append(HumanMessage(content=turn["content"]))
+        elif turn["role"] == "coach":
+            messages.append(SystemMessage(content=f"🎯 [后台教练提示]：{turn['content']}\n(请在接下来的对话中务必采纳此建议，调整话术策略)"))
 
     # 如果是第一轮且没有历史，添加开场提示
     if not conversation_history:

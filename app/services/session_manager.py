@@ -148,6 +148,12 @@ class SessionManager:
             finally:
                 db.close()
 
+            # 只增不减的反馈账本：将教练的最新建议追加到对话历史中，供下一轮参考计算
+            overall_advice = evaluation.get("overall_advice")
+            if overall_advice:
+                print(f"🎯 [反馈账本] 追加教练点评: {overall_advice[:50]}...")
+                self.add_conversation_turn(session_id, "coach", overall_advice)
+
     def list_sessions(self) -> list[SessionData]:
         """列出所有会话"""
         return list(self._sessions.values())
