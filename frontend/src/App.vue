@@ -180,12 +180,13 @@ function handleManualSSE(ev: SSEEvent, cid: string, turn: number, ensureCustomer
       break
     }
     // 阶段 — 排在客户对话框之后
-    case 'stage_update':
+    case 'stage_update': {
       turnCount.value = ev.turn_count || turnCount.value
-      stageLabel.value = ev.stage_label || stageLabel.value
+      stageLabel.value = ev.detected_stage_label || ev.stage_label || stageLabel.value
       ensureCustomer()
-      addSys(`${ev.stage_label}（第${ev.turn_count}轮）`, turn, 'stage_update')
+      addSys(buildStageText(ev), turn, 'stage_update')
       break
+    }
     case 'force_guard':
       addSys(ev.content || '', turn, 'force_guard')
       break
@@ -300,12 +301,13 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number, ens
       break
     }
     // 阶段 — 排在客户对话框之后
-    case 'stage_update':
+    case 'stage_update': {
       turnCount.value = ev.turn_count || turnCount.value
-      stageLabel.value = ev.stage_label || stageLabel.value
+      stageLabel.value = ev.detected_stage_label || ev.stage_label || stageLabel.value
       ensureCustomer()
-      addSys(`${ev.stage_label}（第${ev.turn_count}轮）`, turn, 'stage_update')
+      addSys(buildStageText(ev), turn, 'stage_update')
       break
+    }
     case 'force_guard':
       addSys(ev.content || '', turn, 'force_guard')
       break
@@ -460,6 +462,30 @@ function insertSysBefore(beforeId: string, content: string, turn: number, logTyp
   }
 }
 function findMsg(id: string) { return messages.value.find(m => m.id === id) }
+
+/** 构建阶段显示文本：当检测阶段被防线覆盖时，显示实际检测结果 + 确认进度 */
+function buildStageText(ev: SSEEvent): string {
+  const rawStage = ev.detected_stage_raw || ev.stage || ''
+  const finalStage = ev.stage || ''
+  const rawLabel = ev.detected_stage_label || ev.stage_label || ''
+  const finalLabel = ev.stage_label || ''
+  const strike = ev.decision_strike || 0
+  const required = ev.decision_strikes_required || 2
+  const turn = ev.turn_count || 0
+
+  // 如果检测阶段与最终阶段一致，正常显示
+  if (rawStage === finalStage) {
+    return `${finalLabel}（第${turn}轮）`
+  }
+  
+  // 被强制拖回异议区的提示
+  if (strike === 0) {
+     return `${rawLabel}（过早试探底线，被强制拖回异议区）`
+  }
+
+  // 检测到决策但被打回 → 显示实际检测到的阶段 + 确认进度
+  return `${rawLabel}（确认中 ${strike}/${required}，再次确认则对话结束）`
+}
 </script>
 
 <template>

@@ -83,6 +83,11 @@ export type SSEEvent = {
     is_finished?: boolean
     is_pending_shutdown?: boolean
     tool_calls_log?: any[]
+    /** 原始检测阶段（被防线覆盖前） */
+    detected_stage_raw?: string
+    detected_stage_label?: string
+    decision_strike?: number
+    decision_strikes_required?: number
 }
 
 /**
