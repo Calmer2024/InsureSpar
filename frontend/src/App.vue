@@ -285,9 +285,6 @@ async function handleResumeSession() {
   appStatus.value = 'ready'
   statusText.value = '会话已恢复，可继续输入或推进'
   
-  // 恢复最新的拉取回合记录，以防重复获取
-  lastPolledTurn = evaluations.value.length > 0 ? Math.max(...evaluations.value.map(e => e.turn)) : 0
-  evaluations.value.forEach(e => renderedEvalTurns.add(e.turn))
   startEvalPolling()
 }
 
@@ -341,22 +338,23 @@ function stopAutoTimer() {
  * ======================================== */
 function startEvalPolling() {
   if (evalPollTimer) clearInterval(evalPollTimer)
-  lastPolledTurn = 0
-  renderedEvalTurns.clear()
-  evalPollTimer = setInterval(doPoll, 3500)
-}
-
-async function doPoll() {
-  if (!sessionId.value) return
-  try {
-    const d = await pollEvaluations(sessionId.value, lastPolledTurn)
-    for (const ev of d.new_evaluations || []) {
-      if (renderedEvalTurns.has(ev.turn)) continue
-      renderedEvalTurns.add(ev.turn)
-      evaluations.value.push(ev)
-      lastPolledTurn = Math.max(lastPolledTurn, ev.turn)
+  evalPollTimer = setInterval(async () => {
+    if (!sessionId.value || isFinished.value) return
+    try {
+      const res = await pollEvaluations(sessionId.value, lastPolledTurn)
+      if (res && res.new_evaluations && res.new_evaluations.length > 0) {
+        for (const ev of res.new_evaluations) {
+          if (!renderedEvalTurns.has(ev.turn)) {
+            evaluations.value.push(ev)
+            renderedEvalTurns.add(ev.turn)
+            lastPolledTurn = Math.max(lastPolledTurn, ev.turn)
+          }
+        }
+      }
+    } catch (e) {
+      console.error('拉取评分失败', e)
     }
-  } catch { /* 静默 */ }
+  }, 3000)
 }
 
 /* ========================================
@@ -371,13 +369,19 @@ function viewHistorySession(data: {
   resetSession()
   showHistory.value = false
   isHistoryView.value = true
-  isFinished.value = data.info.is_finished
+  isFinished.value = Boolean(data.info.is_finished)
   messages.value = data.messages
   evaluations.value = data.evaluations
   finalReport.value = data.finalReport
   turnCount.value = data.info.turn_count || 0
   stageLabel.value = data.info.final_stage || 'INTRODUCTION'
   sessionId.value = data.info.session_id
+
+  // ====== 关键修复：同步状态变量 ======
+  lastPolledTurn = evaluations.value.length > 0 ? Math.max(...evaluations.value.map(e => e.turn)) : 0
+  renderedEvalTurns.clear()
+  evaluations.value.forEach(e => renderedEvalTurns.add(e.turn))
+  // ===================================
 
   appStatus.value = 'finished'
   statusText.value = '历史回放（只读）'
