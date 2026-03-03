@@ -449,7 +449,8 @@ async def stream_chat(request: ChatSendRequest):
                 session_manager.add_conversation_turn(
                     session.session_id, 
                     "system", 
-                    "【系统通知：客户已做出最终决定，对话即将在本轮结束后彻底关闭。请向客户进行简短的礼貌告别或确认（如：好的，马上为您发送方案，祝您生活愉快），不要再引入任何新话题。】"
+                    "【系统通知：客户已做出最终决定，对话即将在本轮结束后彻底关闭。请向客户进行简短的礼貌告别或确认（如：好的，马上为您发送方案，祝您生活愉快），不要再引入任何新话题。】",
+                    turn=turn_count
                 )
 
         session_manager.update_session(
