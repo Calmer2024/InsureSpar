@@ -3,6 +3,13 @@
 import os
 import json
 from pathlib import Path
+from dotenv import load_dotenv
+
+# ==========================================
+# 加载 .env 文件
+# ==========================================
+_env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(_env_path)
 
 # ==========================================
 # 路径常量
@@ -14,14 +21,17 @@ DATA_DIR = BASE_DIR / "data"
 # ==========================================
 # 数据库配置
 # ==========================================
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:95515@localhost:3306/insurespar")
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root@localhost:3306/insurespar")
 
 # ==========================================
 # LLM 配置
 # ==========================================
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-LLM_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-d95700b307ec4a18a1909b6564b4ad11")
+LLM_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+
+if not LLM_API_KEY:
+    print("⚠️ 未检测到 DEEPSEEK_API_KEY，请在 backend/.env 中配置")
 
 # ==========================================
 # 业务逻辑配置
