@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.25"
+    "echarts": "^6.0.0",
+    "vue": "^3.5.25",
+    "vue-echarts": "^8.0.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",

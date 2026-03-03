@@ -13,6 +13,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'switch-mode', mode: AppMode): void
+  (e: 'new-session'): void
 }>()
 </script>
 
@@ -28,7 +29,7 @@ defineEmits<{
     </div>
 
     <!-- 中间控制区 -->
-    <div class="flex items-center gap-6">
+    <div class="flex items-center gap-4">
       <!-- 模式切换 -->
       <div class="flex bg-surface-muted rounded-lg p-0.5">
         <button
@@ -50,22 +51,30 @@ defineEmits<{
           🤖 自动对战
         </button>
       </div>
+
+      <!-- 新对练按钮 -->
+      <button
+        class="px-3 py-1.5 rounded-lg border border-primary-300 text-xs font-semibold text-primary-600 hover:bg-primary-50 transition-all"
+        @click="$emit('new-session')"
+      >
+        ＋ 新对练
+      </button>
     </div>
 
     <!-- 右侧状态区 -->
     <div class="flex items-center gap-5 text-xs">
       <div class="flex items-center gap-1.5">
         <StatusDot :status="status" />
-        <span class="text-text-secondary">{{ statusText }}</span>
+        <span class="text-text-secondary truncate max-w-[120px]">{{ statusText }}</span>
       </div>
       <div class="flex items-center gap-1 text-text-secondary">
         <span>🔄</span>
         <span>回合</span>
         <span class="font-bold text-text-primary ml-0.5">{{ turnCount }}</span>
       </div>
-      <div class="text-text-secondary">📍 {{ stageLabel }}</div>
+      <div class="text-text-secondary truncate max-w-[140px]">📍 {{ stageLabel }}</div>
       <div v-if="sessionId" class="text-text-muted font-mono text-[10px]">
-        {{ sessionId.substring(0, 8) }}...
+        {{ sessionId.substring(0, 8) }}
       </div>
     </div>
   </header>

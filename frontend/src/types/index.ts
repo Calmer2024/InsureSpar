@@ -7,7 +7,7 @@ export interface Persona {
     persona_id: string
     name: string
     description: string
-    difficulty: 'easy' | 'medium' | 'hard'
+    difficulty: string
 }
 
 /** 销售策略 */
@@ -15,7 +15,9 @@ export interface Strategy {
     strategy_id: string
     name: string
     description: string
-    strengths: string
+    difficulty?: string
+    strengths?: string
+    weaknesses?: string
     tags?: string[]
 }
 
