@@ -99,7 +99,7 @@ class SessionManager:
             finally:
                 db.close()
 
-    def add_conversation_turn(self, session_id: str, role: str, content: str):
+    def add_conversation_turn(self, session_id: str, role: str, content: str, turn: int):
         """添加一轮对话记录（Auto模式专用）"""
         session = self._sessions.get(session_id)
         if session:
@@ -110,7 +110,7 @@ class SessionManager:
             try:
                 log = ConversationLog(
                     session_id=session_id,
-                    turn=session.turn_count,
+                    turn=turn,
                     role=role,
                     content=content,
                     stage=session.current_stage
@@ -154,7 +154,7 @@ class SessionManager:
             overall_advice = evaluation.get("overall_advice")
             if overall_advice:
                 print(f"🎯 [反馈账本] 追加教练点评: {overall_advice[:50]}...")
-                self.add_conversation_turn(session_id, "coach", overall_advice)
+                self.add_conversation_turn(session_id, "coach", overall_advice, turn=evaluation.get("turn", session.turn_count))
 
     def list_sessions(self) -> list[SessionData]:
         """列出所有会话"""

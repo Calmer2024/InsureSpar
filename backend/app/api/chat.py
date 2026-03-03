@@ -462,9 +462,9 @@ async def stream_chat(request: ChatSendRequest):
         )
 
         # 记录到会话历史以便考官使用最近上下文
-        session_manager.add_conversation_turn(session.session_id, "sales", request.message)
+        session_manager.add_conversation_turn(session.session_id, "sales", request.message, turn=turn_count)
         if customer_reply:
-            session_manager.add_conversation_turn(session.session_id, "customer", customer_reply)
+            session_manager.add_conversation_turn(session.session_id, "customer", customer_reply, turn=turn_count)
 
         yield _sse({
             "type": "done",
