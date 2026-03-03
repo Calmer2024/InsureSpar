@@ -170,8 +170,8 @@ async def auto_step(request: AutoStepRequest):
             yield _sse({"type": "error", "content": "销售Agent未能生成有效发言"})
             return
 
-        # 记录销售发言
-        session_manager.add_conversation_turn(session.session_id, "sales", sales_message, turn=turn_count)
+        # 记录销售发言（注意：此时 customer_graph 还没跑，当前还是处于旧回合，即将迎来的这轮属于 turn_count + 1）
+        session_manager.add_conversation_turn(session.session_id, "sales", sales_message, turn=turn_count + 1)
 
         # ========================================
         # 阶段2：客户 Agent 响应（LangGraph，含流式token）
