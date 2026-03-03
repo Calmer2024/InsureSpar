@@ -147,7 +147,7 @@ def dialogue_manager_node(state: AgentState) -> dict:
     if pending_shutdown:
         print(f"🚦 [状态判定] 当前处于 pending_shutdown 告别阶段，跳过判断，直接完成。")
         return {
-            "current_stage": state.get("current_stage", DialogueStage.DECISION_SIGN),
+            "current_stage": state.get("current_stage"),
             "force_objection": False,
             "tool_calls_log": [],
             "stage_reasoning": "会话已彻底关闭",

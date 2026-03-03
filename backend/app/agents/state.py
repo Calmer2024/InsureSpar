@@ -30,4 +30,4 @@ class AgentState(TypedDict):
     force_objection: bool       # 是否被强制拉回异议阶段
     stage_reasoning: str        # 状态判定理由（透传到前端）
     decision_strike: int        # 连续判定为决策状态的次数（需达3次才算真结束）
-
+    pending_shutdown: bool      # 标记是否进入最后一轮告别，此时跳过状态判定
