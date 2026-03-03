@@ -12,6 +12,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'new-session'): void
+  (e: 'show-history'): void
 }>()
 </script>
 
@@ -33,6 +34,12 @@ defineEmits<{
         @click="$emit('new-session')"
       >
         ＋ 新对练
+      </button>
+      <button
+        class="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-secondary hover:border-primary-400 hover:text-primary-600 transition-all"
+        @click="$emit('show-history')"
+      >
+        📚 历史
       </button>
     </div>
 

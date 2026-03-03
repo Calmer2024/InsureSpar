@@ -207,3 +207,56 @@ export async function fetchManualFinalReport(sessionId: string): Promise<FinalRe
     if (data.error) throw new Error(data.error)
     return data
 }
+
+/* ========================================
+ * 历史记录
+ * ======================================== */
+
+export interface HistorySession {
+    session_id: string
+    persona_id: string
+    strategy_id: string | null
+    start_time: string | null
+    end_time: string | null
+    final_stage: string | null
+    turn_count: number
+    is_finished: boolean
+}
+
+export interface HistoryDetail {
+    session_info: HistorySession
+    conversation_logs: Array<{
+        id: number
+        turn: number
+        role: string
+        content: string
+        stage: string | null
+        created_at: string | null
+    }>
+    evaluations: Array<{
+        id: number
+        turn: number
+        scores: { professionalism: number; compliance: number; strategy: number }
+        comments: { professionalism: string; compliance: string; strategy: string }
+        overall_advice: string
+        created_at: string | null
+    }>
+    final_report: {
+        avg_scores: { total: number; professionalism: number; compliance: number; strategy: number }
+        radar_data: string | null
+        review_content: string | null
+        created_at: string | null
+    } | null
+}
+
+export async function fetchHistorySessions(skip = 0, limit = 50): Promise<HistorySession[]> {
+    const res = await fetch(`${BASE}/api/history/sessions?skip=${skip}&limit=${limit}`)
+    if (!res.ok) throw new Error(`获取历史失败: ${res.status}`)
+    return res.json()
+}
+
+export async function fetchHistoryDetail(sessionId: string): Promise<HistoryDetail> {
+    const res = await fetch(`${BASE}/api/history/sessions/${sessionId}`)
+    if (!res.ok) throw new Error(`获取详情失败: ${res.status}`)
+    return res.json()
+}

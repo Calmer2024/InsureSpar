@@ -16,6 +16,7 @@ import TopBar from './components/layout/TopBar.vue'
 import ChatPanel from './components/chat/ChatPanel.vue'
 import EvalPanel from './components/evaluation/EvalPanel.vue'
 import SessionSetupModal from './components/modal/SessionSetupModal.vue'
+import HistoryDrawer from './components/history/HistoryDrawer.vue'
 
 // ── 状态 ──
 const appStatus = ref<AppStatus>('idle')
@@ -36,8 +37,10 @@ const evaluations = ref<Evaluation[]>([])
 const finalReport = ref<FinalReport | null>(null)
 const reportLoading = ref(false)
 
-// ── 弹窗 ──
+// ── 弹窗 / 抽屉 ──
 const showSetupModal = ref(false)
+const showHistory = ref(false)
+const isHistoryView = ref(false)
 
 // ── 标题 ──
 const chatTitle = ref('对话面板')
@@ -341,6 +344,30 @@ async function doPoll() {
 }
 
 /* ========================================
+ * 历史回放
+ * ======================================== */
+function viewHistorySession(data: {
+  messages: ChatMessage[]
+  evaluations: Evaluation[]
+  finalReport: FinalReport | null
+  info: any
+}) {
+  resetSession()
+  showHistory.value = false
+  isHistoryView.value = true
+  messages.value = data.messages
+  evaluations.value = data.evaluations
+  finalReport.value = data.finalReport
+  turnCount.value = data.info.turn_count || 0
+  stageLabel.value = data.info.final_stage || ''
+  isFinished.value = true
+  appStatus.value = 'finished'
+  statusText.value = '历史回放'
+  chatTitle.value = `📚 ${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
+  chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
+}
+
+/* ========================================
  * 辅助
  * ======================================== */
 function addSys(content: string, turn: number, logType: string, toolName?: string) {
@@ -358,6 +385,7 @@ function findMsg(id: string) { return messages.value.find(m => m.id === id) }
       :stage-label="stageLabel"
       :session-id="sessionId"
       @new-session="handleNewSession"
+      @show-history="showHistory = true"
     />
 
     <div class="flex flex-1 min-h-0">
@@ -394,6 +422,13 @@ function findMsg(id: string) { return messages.value.find(m => m.id === id) }
       :strategies="strategies"
       @start="onStart"
       @close="showSetupModal = false"
+    />
+
+    <!-- 历史抽屉 -->
+    <HistoryDrawer
+      :visible="showHistory"
+      @close="showHistory = false"
+      @view-session="viewHistorySession"
     />
   </div>
 </template>
