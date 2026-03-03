@@ -137,13 +137,20 @@ async function handleSend(message: string) {
   // 销售消息上屏
   messages.value.push({ id: mid(), role: 'sales', content: message, turn })
 
-  // 客户占位
+  // 客户占位 — 懒创建，让工具调用排在前面
   const cid = mid()
-  messages.value.push({ id: cid, role: 'customer', content: '', turn, isStreaming: true })
+  let customerPushed = false
+  const ensureCustomer = () => {
+    if (!customerPushed) {
+      messages.value.push({ id: cid, role: 'customer', content: '', turn, isStreaming: true })
+      customerPushed = true
+    }
+  }
 
   await streamChat(sessionId.value, message, (ev) => {
-    handleManualSSE(ev, cid, turn)
+    handleManualSSE(ev, cid, turn, ensureCustomer)
   }, (err) => {
+    ensureCustomer()
     const m = findMsg(cid)
     if (m) { m.content = `[错误: ${err.message}]`; m.isStreaming = false }
   })
@@ -152,45 +159,54 @@ async function handleSend(message: string) {
   if (!isFinished.value) { appStatus.value = 'ready'; statusText.value = '就绪' }
 }
 
-function handleManualSSE(ev: SSEEvent, cid: string, turn: number) {
-  const cm = findMsg(cid)
+function handleManualSSE(ev: SSEEvent, cid: string, turn: number, ensureCustomer: () => void) {
   switch (ev.type) {
     // 状态 → 仅更新顶栏，不写入聊天
     case 'status':
       statusText.value = ev.content || ''
       break
-    // 打字机
-    case 'token':
-      if (cm) { cm.isStreaming = false; cm.content += ev.content || '' }
-      break
-    // 工具
+    // 工具（客户侧） — 排在客户对话框之前
     case 'tool_call':
       addSys(`调用 ${ev.tool}…`, turn, 'tool_call', ev.tool)
       break
     case 'tool_result':
       addSys(`${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
       break
-    // 阶段
+    // 打字机 — 首个 token 到达时才创建客户占位
+    case 'token': {
+      ensureCustomer()
+      const cm = findMsg(cid)
+      if (cm) { cm.isStreaming = false; cm.content += ev.content || '' }
+      break
+    }
+    // 阶段 — 排在客户对话框之后
     case 'stage_update':
       turnCount.value = ev.turn_count || turnCount.value
       stageLabel.value = ev.stage_label || stageLabel.value
+      ensureCustomer()
       addSys(`${ev.stage_label}（第${ev.turn_count}轮）`, turn, 'stage_update')
       break
     case 'force_guard':
       addSys(ev.content || '', turn, 'force_guard')
       break
     // 完成
-    case 'done':
+    case 'done': {
+      ensureCustomer()
+      const cm = findMsg(cid)
       if (cm) { cm.isStreaming = false; if (!cm.content && ev.customer_reply) cm.content = ev.customer_reply }
       turnCount.value = ev.turn_count || turnCount.value
       stageLabel.value = ev.stage_label || stageLabel.value
       if (ev.is_finished) finishConversation(ev.stage_label || '', turn)
       else if (ev.is_pending_shutdown) { isPendingShutdown.value = true; addSys('客户已做出决定，这是最后一轮', turn, 'force_guard') }
       break
-    case 'error':
+    }
+    case 'error': {
       addSys(ev.content || '', turn, 'force_guard')
+      ensureCustomer()
+      const cm = findMsg(cid)
       if (cm) { cm.content = `[错误] ${ev.content}`; cm.isStreaming = false }
       break
+    }
   }
 }
 
@@ -206,11 +222,29 @@ async function handleStep() {
   const turn = turnCount.value + 1
   const sid = mid()
   const cid = mid()
-  messages.value.push({ id: sid, role: 'sales', content: '', turn, isStreaming: true })
-  messages.value.push({ id: cid, role: 'customer', content: '', turn, isStreaming: true })
+
+  // 懒创建占位消息 — 保证工具调用排在对应 Agent 对话框之前
+  let salesPushed = false
+  let customerPushed = false
+  const ensureSales = () => {
+    if (!salesPushed) {
+      messages.value.push({ id: sid, role: 'sales', content: '', turn, isStreaming: true })
+      salesPushed = true
+    }
+  }
+  const ensureCustomer = () => {
+    if (!customerPushed) {
+      ensureSales() // 销售消息必须排在客户消息之前
+      messages.value.push({ id: cid, role: 'customer', content: '', turn, isStreaming: true })
+      customerPushed = true
+    }
+  }
+
+  // 立即显示销售 Agent 打字指示器，提供即时视觉反馈
+  ensureSales()
 
   await apiAutoStep(sessionId.value, (ev) => {
-    handleAutoSSE(ev, sid, cid, turn)
+    handleAutoSSE(ev, sid, cid, turn, ensureSales, ensureCustomer)
   }, (err) => {
     addSys(`推进失败: ${err.message}`, turn, 'force_guard')
   })
@@ -219,9 +253,7 @@ async function handleStep() {
   if (!isFinished.value) { appStatus.value = 'ready'; statusText.value = '就绪' }
 }
 
-function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number) {
-  const sm = findMsg(sid)
-  const cm = findMsg(cid)
+function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number, ensureSales: () => void, ensureCustomer: () => void) {
   switch (ev.type) {
     // 状态 → 仅顶栏，不写入聊天
     case 'phase':
@@ -229,42 +261,60 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number) {
     case 'sales_thinking':
       statusText.value = ev.content || ''
       break
-    // 销售打字机
-    case 'sales_token':
-      if (sm) { sm.isStreaming = false; sm.content += ev.content || '' }
-      break
-    case 'sales_message_done':
-      if (sm) { sm.isStreaming = false; if (!sm.content && ev.content) sm.content = ev.content }
-      statusText.value = '客户思考中…'
-      break
-    // 销售工具
+    // 销售工具 — 插入到销售占位符之前
     case 'sales_tool_call':
-      addSys(`销售工具 ${ev.tool}`, turn, 'tool_call', ev.tool)
+      insertSysBefore(sid, `销售工具 ${ev.tool}`, turn, 'tool_call', ev.tool)
       break
     case 'sales_tool_result':
-      addSys(`${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
+      insertSysBefore(sid, `${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
       break
-    // 客户打字机
-    case 'customer_token':
-      if (cm) { cm.isStreaming = false; cm.content += ev.content || '' }
+    // 销售打字机
+    case 'sales_token': {
+      ensureSales()
+      const sm = findMsg(sid)
+      if (sm) { sm.isStreaming = false; sm.content += ev.content || '' }
       break
+    }
+    case 'sales_message_done': {
+      ensureSales()
+      const sm = findMsg(sid)
+      if (sm) { sm.isStreaming = false; if (!sm.content && ev.content) sm.content = ev.content }
+      statusText.value = '客户思考中…'
+      ensureCustomer() // 立即显示客户打字指示器
+      break
+    }
+    // 客户工具 — 插入到客户占位符之前
     case 'customer_tool_call':
-      addSys(`【客户】工具 ${ev.tool}`, turn, 'tool_call', ev.tool)
+      ensureSales()
+      insertSysBefore(cid, `【客户】工具 ${ev.tool}`, turn, 'tool_call', ev.tool)
       break
     case 'customer_tool_result':
-      addSys(`【客户】${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
+      ensureSales()
+      insertSysBefore(cid, `【客户】${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
       break
-    // 阶段
+    // 客户打字机 — 首个 token 到达时才创建占位
+    case 'customer_token': {
+      ensureCustomer()
+      const cm = findMsg(cid)
+      if (cm) { cm.isStreaming = false; cm.content += ev.content || '' }
+      break
+    }
+    // 阶段 — 排在客户对话框之后
     case 'stage_update':
       turnCount.value = ev.turn_count || turnCount.value
       stageLabel.value = ev.stage_label || stageLabel.value
+      ensureCustomer()
       addSys(`${ev.stage_label}（第${ev.turn_count}轮）`, turn, 'stage_update')
       break
     case 'force_guard':
       addSys(ev.content || '', turn, 'force_guard')
       break
     // 完成
-    case 'step_done':
+    case 'step_done': {
+      ensureSales()
+      ensureCustomer()
+      const cm = findMsg(cid)
+      const sm = findMsg(sid)
       if (cm) { cm.isStreaming = false; if (!cm.content && ev.customer_reply) cm.content = ev.customer_reply }
       if (sm) { sm.isStreaming = false; if (!sm.content && ev.sales_message) sm.content = ev.sales_message }
       turnCount.value = ev.turn_count || turnCount.value
@@ -272,6 +322,7 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number) {
       if (ev.is_finished) { finishConversation(ev.stage_label || '', turn); stopAutoTimer() }
       else if (ev.is_pending_shutdown) { isPendingShutdown.value = true; addSys('客户已做出决定，下一轮将是最后告别', turn, 'force_guard') }
       break
+    }
     case 'error':
       addSys(ev.content || '', turn, 'force_guard')
       break
@@ -397,6 +448,16 @@ function viewHistorySession(data: {
  * ======================================== */
 function addSys(content: string, turn: number, logType: string, toolName?: string) {
   messages.value.push({ id: mid(), role: 'system', content, turn, logType: logType as any, toolName })
+}
+/** 在指定 id 消息之前插入系统消息（用于让工具调用排在对话框前面） */
+function insertSysBefore(beforeId: string, content: string, turn: number, logType: string, toolName?: string) {
+  const msg = { id: mid(), role: 'system' as const, content, turn, logType: logType as any, toolName }
+  const idx = messages.value.findIndex(m => m.id === beforeId)
+  if (idx !== -1) {
+    messages.value.splice(idx, 0, msg)
+  } else {
+    messages.value.push(msg)
+  }
 }
 function findMsg(id: string) { return messages.value.find(m => m.id === id) }
 </script>
