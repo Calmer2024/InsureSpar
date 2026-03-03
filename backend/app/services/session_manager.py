@@ -160,6 +160,65 @@ class SessionManager:
         """列出所有会话"""
         return list(self._sessions.values())
 
+    def restore_session(self, session_id: str) -> Optional[SessionData]:
+        """从数据库恢复会话到内存中"""
+        # 如果内存里已经有，直接返回
+        if session_id in self._sessions:
+            return self._sessions[session_id]
+
+        db = SessionLocal()
+        try:
+            # 1. 查会话基础信息
+            db_session = db.query(SessionRecord).filter(SessionRecord.session_id == session_id).first()
+            if not db_session:
+                return None
+            
+            # 2. 查对话历史
+            logs = db.query(ConversationLog).filter(ConversationLog.session_id == session_id).order_by(ConversationLog.id).all()
+            history = []
+            for log in logs:
+                if log.role in ["sales", "customer", "coach"]:
+                    history.append({"role": log.role, "content": log.content})
+
+            # 3. 查评分记录
+            evals = db.query(EvaluationRecord).filter(EvaluationRecord.session_id == session_id).order_by(EvaluationRecord.turn).all()
+            evaluations = []
+            for ev in evals:
+                evaluations.append({
+                    "turn": ev.turn,
+                    "professionalism_score": ev.professionalism_score,
+                    "compliance_score": ev.compliance_score,
+                    "strategy_score": ev.strategy_score,
+                    "professionalism_comment": ev.professionalism_comment,
+                    "compliance_comment": ev.compliance_comment,
+                    "strategy_comment": ev.strategy_comment,
+                    "overall_advice": ev.overall_advice
+                })
+
+            # 4. 重建 SessionData
+            session = SessionData(
+                session_id=session_id,
+                persona_id=db_session.persona_id,
+                strategy_id=db_session.strategy_id,
+                created_at=db_session.start_time or datetime.now(),
+                turn_count=db_session.turn_count,
+                current_stage=db_session.final_stage or "INTRODUCTION",
+                is_finished=db_session.is_finished,
+                conversation_history=history,
+                evaluations=evaluations,
+            )
+            
+            # 写入内存字典
+            self._sessions[session_id] = session
+            print(f"🔄 [会话管理] 成功从数据库恢复会话: {session_id} (已执行 {db_session.turn_count} 轮)")
+            return session
+            
+        except Exception as e:
+            print(f"❌ [会话管理] 从数据库恢复会话失败: {e}")
+            return None
+        finally:
+            db.close()
+
     def save_final_report(self, session_id: str, report_data: dict):
         """保存终极报告到数据库"""
         db = SessionLocal()

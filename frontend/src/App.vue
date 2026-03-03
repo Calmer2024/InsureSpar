@@ -344,27 +344,42 @@ async function doPoll() {
 }
 
 /* ========================================
- * 历史回放
+ * 历史回放与恢复
  * ======================================== */
 function viewHistorySession(data: {
   messages: ChatMessage[]
   evaluations: Evaluation[]
   finalReport: FinalReport | null
   info: any
+  resume: boolean
 }) {
   resetSession()
   showHistory.value = false
-  isHistoryView.value = true
+  isHistoryView.value = !data.resume
   messages.value = data.messages
   evaluations.value = data.evaluations
   finalReport.value = data.finalReport
   turnCount.value = data.info.turn_count || 0
-  stageLabel.value = data.info.final_stage || ''
-  isFinished.value = true
-  appStatus.value = 'finished'
-  statusText.value = '历史回放'
-  chatTitle.value = `📚 ${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
-  chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
+  stageLabel.value = data.info.final_stage || 'INTRODUCTION'
+  sessionId.value = data.info.session_id
+
+  if (data.resume) {
+    isFinished.value = false
+    appStatus.value = 'ready'
+    statusText.value = '会话已恢复，可继续输入或推进'
+    chatTitle.value = `${data.info.persona_id} × ${data.info.strategy_id || '普通'}`
+    chatSubtitle.value = '从历史记录恢复的会话'
+    // 恢复最新的拉取回合记录，以防重复获取
+    lastPolledTurn = evaluations.value.length > 0 ? Math.max(...evaluations.value.map(e => e.turn)) : 0
+    evaluations.value.forEach(e => renderedEvalTurns.add(e.turn))
+    startEvalPolling()
+  } else {
+    isFinished.value = true
+    appStatus.value = 'finished'
+    statusText.value = '历史回放（只读）'
+    chatTitle.value = `📚 ${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
+    chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
+  }
 }
 
 /* ========================================

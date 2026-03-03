@@ -123,9 +123,13 @@ async def auto_step(request: AutoStepRequest):
     """
     session = session_manager.get_session(request.session_id)
     if not session:
-        raise HTTPException(404, f"会话 '{request.session_id}' 不存在")
+        # 尝试从数据库恢复
+        session = session_manager.restore_session(request.session_id)
+        if not session:
+            raise HTTPException(404, f"会话 '{request.session_id}' 不存在或无法恢复")
+            
     if session.is_finished:
-        raise HTTPException(400, "此会话已结束，请创建新会话")
+        raise HTTPException(400, "此会话已结束，无法继续对话")
     if not session.strategy_id:
         raise HTTPException(400, "此会话不是 Auto-Agent 模式")
 

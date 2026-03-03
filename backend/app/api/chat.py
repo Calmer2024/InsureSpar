@@ -306,9 +306,13 @@ async def stream_chat(request: ChatSendRequest):
     """
     session = session_manager.get_session(request.session_id)
     if not session:
-        raise HTTPException(status_code=404, detail=f"会话 '{request.session_id}' 不存在")
+        # 尝试从数据库恢复
+        session = session_manager.restore_session(request.session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=f"会话 '{request.session_id}' 不存在或无法恢复")
+            
     if session.is_finished:
-        raise HTTPException(status_code=400, detail="此会话已结束，请创建新会话")
+        raise HTTPException(status_code=400, detail="此会话已结束，无法继续对话")
 
     async def event_generator():
         """SSE 事件生成器"""
