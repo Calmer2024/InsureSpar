@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 defineProps<{
   disabled?: boolean
   placeholder?: string
-  mode?: 'manual' | 'auto'
+  isFinished?: boolean
+  autoTimerActive?: boolean
 }>()
 
 defineEmits<{
@@ -10,8 +13,6 @@ defineEmits<{
   (e: 'step'): void
   (e: 'toggle-auto-timer'): void
 }>()
-
-import { ref } from 'vue'
 
 const inputText = ref('')
 
@@ -24,46 +25,61 @@ function handleSend(emit: (e: 'send', msg: string) => void) {
 </script>
 
 <template>
-  <!-- 手动模式输入区 -->
-  <div v-if="mode !== 'auto'" class="px-5 py-3 border-t border-border bg-surface-card flex gap-3 items-center shrink-0">
+  <!-- 结束状态 -->
+  <div v-if="isFinished" class="px-5 py-3 border-t border-border bg-surface-card flex items-center justify-center gap-3 shrink-0">
+    <span class="text-xs text-text-muted">对话已结束</span>
+  </div>
+
+  <!-- 统一输入区：手动输入 + AI 推进 -->
+  <div v-else class="px-5 py-3 border-t border-border bg-surface-card flex gap-3 items-center shrink-0">
+    <!-- 文本输入 -->
     <input
       v-model="inputText"
       type="text"
-      :placeholder="placeholder || '输入你的销售话术...'"
+      :placeholder="placeholder || '输入你的销售话术…'"
       :disabled="disabled"
       class="flex-1 bg-surface-muted border border-border-light rounded-xl px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 disabled:opacity-40"
       @keypress.enter="handleSend($emit)"
     />
+
+    <!-- 发送按钮 -->
     <button
       :disabled="disabled || !inputText.trim()"
-      class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:opacity-90 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+      class="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:opacity-90 active:scale-[0.97] transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
       @click="handleSend($emit)"
     >
       发送
     </button>
-  </div>
 
-  <!-- 自动模式控制区 -->
-  <div v-else class="px-5 py-3 border-t border-border bg-surface-card flex items-center gap-3 shrink-0">
+    <!-- 分割线 -->
+    <div class="w-px h-7 bg-border" />
+
+    <!-- AI 推进按钮 -->
     <button
       :disabled="disabled"
-      class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:opacity-90 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+      class="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+      :class="autoTimerActive
+        ? 'bg-primary-500 text-white hover:bg-primary-600'
+        : 'border border-border text-text-secondary hover:border-primary-400 hover:text-primary-600 bg-surface-card'"
       @click="$emit('step')"
     >
-      ▶ 下一步
+      ▶ AI 推进
     </button>
+
+    <!-- 自动连续推进 -->
     <button
-      class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs text-text-secondary hover:border-primary-400 hover:text-primary-600 transition-all duration-150"
+      :disabled="disabled && !autoTimerActive"
+      class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border"
+      :class="autoTimerActive
+        ? 'bg-primary-500 text-white border-primary-500 shadow-sm shadow-primary-200'
+        : 'border-border-light text-text-muted hover:border-primary-300 hover:text-primary-600 bg-surface-card'"
       @click="$emit('toggle-auto-timer')"
     >
-      <span class="w-2 h-2 rounded-full bg-current" />
-      自动推进
-    </button>
-    <span class="flex-1" />
-    <button
-      class="px-3 py-2 rounded-lg bg-surface-muted border border-border-light text-xs text-text-muted hover:text-text-secondary transition"
-    >
-      ⚙️ 重新配置
+      <span
+        class="w-2 h-2 rounded-full transition-colors"
+        :class="autoTimerActive ? 'bg-white animate-pulse-dot' : 'bg-text-muted'"
+      />
+      {{ autoTimerActive ? '推进中' : '连续' }}
     </button>
   </div>
 </template>

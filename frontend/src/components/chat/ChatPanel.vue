@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChatMessage, AppMode } from '../../types'
+import type { ChatMessage } from '../../types'
 import { computed, nextTick, ref, watch } from 'vue'
 import ChatBubble from './ChatBubble.vue'
 import RoundDivider from './RoundDivider.vue'
@@ -7,18 +7,17 @@ import ChatInput from './ChatInput.vue'
 
 const props = defineProps<{
   messages: ChatMessage[]
-  mode: AppMode
   title: string
   subtitle: string
   disabled?: boolean
   isFinished?: boolean
+  autoTimerActive?: boolean
 }>()
 
 defineEmits<{
   (e: 'send', message: string): void
   (e: 'step'): void
   (e: 'toggle-auto-timer'): void
-  (e: 'show-report'): void
 }>()
 
 const chatContainer = ref<HTMLElement>()
@@ -44,7 +43,10 @@ watch(
   async () => {
     await nextTick()
     if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+      chatContainer.value.scrollTo({
+        top: chatContainer.value.scrollHeight,
+        behavior: 'smooth',
+      })
     }
   }
 )
@@ -65,13 +67,14 @@ watch(
         <div class="w-16 h-16 rounded-2xl bg-primary-50 flex items-center justify-center mb-4">
           <span class="text-3xl">💬</span>
         </div>
-        <p class="text-sm text-text-secondary">{{ mode === 'auto' ? '选择画像与策略，开始自动对战' : '选择客户画像开始对练' }}</p>
+        <p class="text-sm text-text-secondary">选择客户画像与销售策略开始对练</p>
+        <p class="text-xs text-text-muted mt-1">支持手动输入和 AI 自动推进</p>
       </div>
 
       <!-- 按轮次渲染消息 -->
       <template v-for="group in groupedMessages" :key="group.turn">
-        <RoundDivider :turn="group.turn" />
-        <div class="space-y-2.5">
+        <RoundDivider v-if="group.turn > 0" :turn="group.turn" />
+        <div class="space-y-2">
           <ChatBubble
             v-for="msg in group.messages"
             :key="msg.id"
@@ -79,22 +82,13 @@ watch(
           />
         </div>
       </template>
-
-      <!-- 结束按钮 -->
-      <div v-if="isFinished" class="flex justify-center pt-4">
-        <button
-          class="px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-sm"
-          @click="$emit('show-report')"
-        >
-          📊 查看终极评估报告
-        </button>
-      </div>
     </div>
 
     <!-- 输入区 -->
     <ChatInput
-      :mode="mode"
       :disabled="disabled || isFinished"
+      :is-finished="isFinished"
+      :auto-timer-active="autoTimerActive"
       @send="$emit('send', $event)"
       @step="$emit('step')"
       @toggle-auto-timer="$emit('toggle-auto-timer')"
