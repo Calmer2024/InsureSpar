@@ -23,6 +23,7 @@ STAGE_LABELS = {
     DialogueStage.DECISION_PENDING:   "📋 同意核保",
     DialogueStage.DECISION_FOLLOW_UP: "📞 需要跟进",
     DialogueStage.DECISION_REJECT:    "❌ 客户拒绝",
+    DialogueStage.DECISION_ABANDON:   "🚫 放弃投保",
 }
 
 # 所有决策阶段（进入后对话结束）
@@ -31,6 +32,7 @@ DECISION_STAGES = {
     DialogueStage.DECISION_PENDING,
     DialogueStage.DECISION_FOLLOW_UP,
     DialogueStage.DECISION_REJECT,
+    DialogueStage.DECISION_ABANDON,
 }
 
 
@@ -213,12 +215,17 @@ async def auto_step(request: AutoStepRequest):
                         reasoning = output.get("stage_reasoning", "")
                         session.decision_strike = output.get("decision_strike", session.decision_strike)
                         label = STAGE_LABELS.get(current_stage, current_stage)
+                        detected_raw = output.get("detected_stage_raw", current_stage)
                         yield _sse({
                             "type": "stage_update",
                             "stage": current_stage,
                             "stage_label": label,
                             "turn_count": turn_count,
                             "reasoning": reasoning,
+                            "detected_stage_raw": detected_raw,
+                            "detected_stage_label": STAGE_LABELS.get(detected_raw, detected_raw),
+                            "decision_strike": session.decision_strike,
+                            "decision_strikes_required": DECISION_STRIKES_REQUIRED,
                         })
                         if output.get("force_objection"):
                             yield _sse({

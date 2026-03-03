@@ -38,6 +38,7 @@ STAGE_LABELS = {
     DialogueStage.DECISION_PENDING:   "📋 同意核保",
     DialogueStage.DECISION_FOLLOW_UP: "📞 需要跟进",
     DialogueStage.DECISION_REJECT:    "❌ 客户拒绝",
+    DialogueStage.DECISION_ABANDON:   "🚫 放弃投保",
 }
 
 
@@ -165,9 +166,19 @@ async def sales_agent_step(
             final_response = response.content if hasattr(response, "content") and response.content else ""
             break
 
-    # ---- 兜底策略: 如果循环结束仍无输出，强行使用最后一次的内容 ----
-    if not final_response and hasattr(response, "content") and response.content:
-        final_response = response.content
+    # ---- 兜底策略: 如果循环结束仍无输出（工具调用超限） ----
+    if not final_response:
+        if hasattr(response, "content") and response.content:
+            final_response = response.content
+        else:
+            # 放弃调用工具，强制让纯净的 LLM（不带工具）做最后一次总结生成
+            yield {"type": "sales_thinking", "content": "🧠 查询次数达上限，正在总结现有信息..."}
+            fallback_msg = SystemMessage(content="【系统提示】你已经查询了太多次工具。现在停止查询，请立刻基于上面已经获取的信息，直接给客户一个合理的推荐或回答。")
+            messages.append(fallback_msg)
+            
+            # 使用没有绑定工具的原始 sales_llm 强制输出文本
+            fallback_response = await sales_llm.ainvoke(messages)
+            final_response = fallback_response.content if fallback_response.content else "很抱歉，我查询了太多资料可能没有找到合适答案。请问我们能先聊聊其他方面吗？"
 
     # 逐字符模拟流式推送（实际 LangChain 不支持在 ainvoke 后再 stream，这里做 chunk 分割推送）
     chunk_size = 3

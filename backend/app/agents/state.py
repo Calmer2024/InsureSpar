@@ -16,6 +16,7 @@ class DialogueStage(str, Enum):
     DECISION_PENDING = "DECISION_PENDING"                # 同意核保：客户愿意提交资料/体检
     DECISION_FOLLOW_UP = "DECISION_FOLLOW_UP"            # 需跟进：要和家人商量/下次再说
     DECISION_REJECT = "DECISION_REJECT"                  # 明确拒绝：彻底流失
+    DECISION_ABANDON = "DECISION_ABANDON"                # 放弃投保：因健康/资格等客观原因无法投保
 
 
 # ==========================================
@@ -31,3 +32,4 @@ class AgentState(TypedDict):
     stage_reasoning: str        # 状态判定理由（透传到前端）
     decision_strike: int        # 连续判定为决策状态的次数（需达3次才算真结束）
     pending_shutdown: bool      # 标记是否进入最后一轮告别，此时跳过状态判定
+    detected_stage_raw: str     # DM 原始判定阶段（被防线覆盖前），供前端展示实际检测结果

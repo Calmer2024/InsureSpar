@@ -150,43 +150,73 @@ def dialogue_manager_node(state: AgentState) -> dict:
     """
     turn_count = state.get("turn_count", 1)
     pending_shutdown = state.get("pending_shutdown", False)
+    prev_stage = state.get("current_stage", DialogueStage.INTRODUCTION)
 
     # 如果已经在准备关闭阶段，直接继承上一阶段并返回，不再进行任何评判
     if pending_shutdown:
         print(f"🚦 [状态判定] 当前处于 pending_shutdown 告别阶段，跳过判断，直接完成。")
         return {
-            "current_stage": state.get("current_stage"),
+            "current_stage": prev_stage,
+            "detected_stage_raw": prev_stage,
             "force_objection": False,
             "tool_calls_log": [],
             "stage_reasoning": "会话已彻底关闭",
             "decision_strike": state.get("decision_strike", 2),
         }
 
-    # ========== 提取本轮的完整一来一回 ==========
+    # ========== 提取本轮 + 上一轮的对话 ==========
     sales_msg = ""
     customer_msg = ""
+    prev_sales_msg = ""
+    prev_customer_msg = ""
+    round_found = 0  # 已找到几轮完整对话
 
     for m in reversed(state["messages"]):
-        if m.type == "ai" and not customer_msg:
-            # 跳过工具调用的空消息
-            if hasattr(m, "tool_calls") and m.tool_calls and not m.content:
-                continue
-            customer_msg = m.content
-        elif m.type == "human" and not sales_msg:
-            sales_msg = m.content
-        if sales_msg and customer_msg:
-            break
+        if round_found == 0:
+            # 本轮
+            if m.type == "ai" and not customer_msg:
+                if hasattr(m, "tool_calls") and m.tool_calls and not m.content:
+                    continue
+                customer_msg = m.content
+            elif m.type == "human" and not sales_msg:
+                sales_msg = m.content
+            if sales_msg and customer_msg:
+                round_found = 1
+        elif round_found == 1:
+            # 上一轮
+            if m.type == "ai" and not prev_customer_msg:
+                if hasattr(m, "tool_calls") and m.tool_calls and not m.content:
+                    continue
+                prev_customer_msg = m.content
+            elif m.type == "human" and not prev_sales_msg:
+                prev_sales_msg = m.content
+            if prev_sales_msg and prev_customer_msg:
+                round_found = 2
+                break
 
     print(f"🚦 [状态判定] 分析第 {turn_count} 轮完整对话...")
     print(f"   销售说: {sales_msg[:80]}...")
     print(f"   客户说: {customer_msg[:80]}...")
 
+    # ========== 构建上下文信息 ==========
+    prev_context = ""
+    if prev_sales_msg and prev_customer_msg:
+        prev_context = f"""【上一轮对话（第{turn_count - 1}轮）参考】
+销售说："{prev_sales_msg[:200]}"
+客户回复："{prev_customer_msg[:200]}"
+上一轮判定阶段：{prev_stage}
+
+"""
+
     # ========== LLM 判定阶段 ==========
     tracker_prompt = f"""你是对话状态跟踪器。一轮完整对话刚刚结束，请判定当前所处的阶段。
 
-【本轮完整对话】
+{prev_context}【本轮完整对话（第{turn_count}轮）】
 销售说："{sales_msg[:300]}"
 客户回复（⭐ 核心判定依据）："{customer_msg[:300]}"
+
+上一轮判定阶段为：{prev_stage}
+请结合上下文的对话趋势进行判定。注意阶段应该有连贯性，如果上一轮已判定为某个决策阶段，本轮客户仍在配合推进（如进行健康告知、确认方案细节），则应维持或升级该决策阶段，而非回退。
 
 可选阶段（严格输出英文标识之一）：
 
@@ -207,13 +237,19 @@ def dialogue_manager_node(state: AgentState) -> dict:
 
 5. DECISION_SIGN (明确签单 - 成功结局)：
    客户没有任何遗留疑问，明确表示现在就买、直接交钱签合同。
+   ⚠️ 重要：如果上一轮已经判定为 DECISION_SIGN，本轮客户继续配合（如进行健康告知、确认投保资料），应维持 DECISION_SIGN，不应降级。
 
 6. DECISION_REJECT (明确拒绝 - 失败结局)：
    客户明确表示坚决不买、不需要保险、或态度恶劣要求不要再联系。
 
+7. DECISION_ABANDON (放弃投保 - 客观终止)：
+   因客观原因（如健康问题导致无法通过核保、年龄超限等）客户无法购买本产品。
+   触发特征：销售已明确告知客户不符合投保条件，客户接受现实并放弃投保；或双方已转向讨论其他替代方案。
+   ⚠️ 注意：这不是客户的主观拒绝，而是客观条件不允许。
+
 输出 JSON：
 {{
-  "current_stage": "填入上述六个英文阶段之一",
+  "current_stage": "填入上述七个英文阶段之一",
   "reasoning": "结合客户回复，一句话说明判定理由"
 }}"""
 
@@ -221,6 +257,7 @@ def dialogue_manager_node(state: AgentState) -> dict:
     result: DialogueStateUpdate = structured_llm.invoke(tracker_prompt)
 
     detected_stage = result.current_stage
+    detected_stage_raw = detected_stage  # 保存原始判定
     reasoning = result.reasoning
     force_objection = False
 
@@ -230,6 +267,7 @@ def dialogue_manager_node(state: AgentState) -> dict:
     is_decision = detected_stage in [
         DialogueStage.DECISION_SIGN, DialogueStage.DECISION_REJECT,
         DialogueStage.DECISION_PENDING, DialogueStage.DECISION_FOLLOW_UP,
+        DialogueStage.DECISION_ABANDON,
     ] 
     if is_decision and turn_count < MIN_TURNS_BEFORE_DECISION:
         print(f"🛡️ [防线触发] 第 {turn_count} 轮就想进入决策？强制拖回 OBJECTION！(需要至少 {MIN_TURNS_BEFORE_DECISION} 轮)")
@@ -257,6 +295,7 @@ def dialogue_manager_node(state: AgentState) -> dict:
 
     return {
         "current_stage": detected_stage,
+        "detected_stage_raw": detected_stage_raw,
         "force_objection": force_objection,
         "tool_calls_log": [],
         "stage_reasoning": reasoning,
