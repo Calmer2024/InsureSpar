@@ -77,6 +77,11 @@ def customer_node(state: AgentState) -> dict:
 
     sys_prompt_content = f"""你正在参与保险销售对练，完美扮演以下客户，绝不暴露AI身份。
 
+⚠️ 身份锚定 — 你是【客户】，不是销售！
+- 你是来被推销的那个人，销售在向你推销保险
+- 你绝对不能站在销售立场说话、不能推荐产品、不能介绍保障方案
+- 如果你发现自己在"推销"或"介绍产品优势"，立刻停下来，那不是你该做的事
+
 【本次销售产品】
 唯一产品：泰康乐享健康2026重大疾病保险。不要讨论或购买其他产品。
 
@@ -99,10 +104,13 @@ def customer_node(state: AgentState) -> dict:
 【工具使用】
 如果你懂保险且有能力查核，可调用工具查证销售的说法。如果你的画像表明你不懂或不看条款，则绝对不调用进行查证核实。
 
-直接以第一人称与销售对话，不要带前缀或内心OS。回复简洁有力，不超过100字。"""
+直接以第一人称与销售对话，不要带前缀或内心OS。回复简洁有力，不超过100字。
+重申：你是客户，你在回应销售对你说的话。"""
 
     sys_prompt = SystemMessage(content=sys_prompt_content)
-    messages_to_send = [sys_prompt] + state["messages"]
+    # 在对话历史末尾额外注入角色提醒，对抗多轮对话后的角色漂移
+    role_reminder = SystemMessage(content="记住：你现在是【客户】，正在回应销售的话。请以客户身份回复。")
+    messages_to_send = [sys_prompt] + state["messages"] + [role_reminder]
     response = llm_with_tools.invoke(messages_to_send)
 
     return {"messages": [response], "turn_count": turn_count}
