@@ -260,3 +260,40 @@ export async function fetchHistoryDetail(sessionId: string): Promise<HistoryDeta
     if (!res.ok) throw new Error(`获取详情失败: ${res.status}`)
     return res.json()
 }
+
+/* ========================================
+ * 用户工具箱
+ * ======================================== */
+
+export async function toolSearchRules(query: string): Promise<string> {
+    const res = await fetch(`${BASE}/api/tools/search-rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+    })
+    if (!res.ok) throw new Error(`条款查询失败: ${res.status}`)
+    const data = await res.json()
+    return data.result
+}
+
+export async function toolPremiumRate(age: number, gender: string, payPeriod: number, baseAmount: number = 500000): Promise<string> {
+    const res = await fetch(`${BASE}/api/tools/premium-rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ age, gender, pay_period: payPeriod, base_amount: baseAmount }),
+    })
+    if (!res.ok) throw new Error(`保费查询失败: ${res.status}`)
+    const data = await res.json()
+    return data.result
+}
+
+export async function toolCashValue(gender: string, age: number, payPeriod: number, year: number, baseAmount: number = 500000): Promise<string> {
+    const res = await fetch(`${BASE}/api/tools/cash-value`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gender, age, pay_period: payPeriod, year, base_amount: baseAmount }),
+    })
+    if (!res.ok) throw new Error(`现金价值查询失败: ${res.status}`)
+    const data = await res.json()
+    return data.result
+}

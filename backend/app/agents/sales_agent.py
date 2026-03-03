@@ -114,7 +114,7 @@ async def sales_agent_step(
     # ---- 工具调用循环 ----
     final_response = ""
     tool_round = 0
-    max_tool_rounds = 8  # 防止无限循环
+    max_tool_rounds = 5  # 防止无限循环
 
     while tool_round < max_tool_rounds:
         tool_round += 1
@@ -165,21 +165,9 @@ async def sales_agent_step(
             final_response = response.content if hasattr(response, "content") and response.content else ""
             break
 
-    # ---- 兜底策略: 如果工具循环耗尽仍无纯文本输出 ----
-    if not final_response:
-        # 先尝试取最后一次 response 的 content
-        if hasattr(response, "content") and response.content:
-            final_response = response.content
-        else:
-            # 用不带工具的 LLM 强制生成一次总结性回复
-            print(f"⚠️ [销售Agent] 工具调用 {max_tool_rounds} 轮后仍无文本输出，强制生成回复...")
-            try:
-                messages.append(SystemMessage(content="你已经完成了所有工具查询，现在请根据上面获取到的所有数据，直接用自然语言向客户作出专业、完整的回复。不要再调用任何工具。"))
-                forced_response = await sales_llm.ainvoke(messages)
-                if hasattr(forced_response, "content") and forced_response.content:
-                    final_response = forced_response.content
-            except Exception as e:
-                print(f"❌ [销售Agent] 强制生成回复失败: {e}")
+    # ---- 兜底策略: 如果循环结束仍无输出，强行使用最后一次的内容 ----
+    if not final_response and hasattr(response, "content") and response.content:
+        final_response = response.content
 
     # 逐字符模拟流式推送（实际 LangChain 不支持在 ainvoke 后再 stream，这里做 chunk 分割推送）
     chunk_size = 3

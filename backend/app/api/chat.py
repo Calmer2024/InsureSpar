@@ -335,7 +335,6 @@ async def stream_chat(request: ChatSendRequest):
         tool_logs = []
         force_triggered = False
         dm_finished = False  # 对话管理器是否已结束（兼容旧逻辑）
-        customer_done = False  # 客户是否已完成回复
 
         try:
             async for event in customer_graph.astream_events(
@@ -406,13 +405,12 @@ async def stream_chat(request: ChatSendRequest):
                                 if not customer_reply:
                                     customer_reply = msg.content
                                     yield _sse({"type": "token", "content": msg.content})
-                        customer_done = True
-
+                    # 去除了 customer_done = True，因为带工具的回调还会再次进入这个节点
                 # === 客户 LLM 逐 Token 流式输出 ===
                 elif kind == "on_chat_model_stream":
                     chunk = data.get("chunk")
                     # 使用 langgraph_node 判断来源
-                    is_customer_node = langgraph_node == "customer" and not customer_done
+                    is_customer_node = langgraph_node == "customer"
                     if chunk and hasattr(chunk, "content") and chunk.content and is_customer_node:
                         customer_reply += chunk.content
                         yield _sse({"type": "token", "content": chunk.content})

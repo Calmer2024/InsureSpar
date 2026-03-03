@@ -248,8 +248,11 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number) {
     case 'customer_token':
       if (cm) { cm.isStreaming = false; cm.content += ev.content || '' }
       break
+    case 'customer_tool_call':
+      addSys(`【客户】工具 ${ev.tool}`, turn, 'tool_call', ev.tool)
+      break
     case 'customer_tool_result':
-      addSys(`${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
+      addSys(`【客户】${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
       break
     // 阶段
     case 'stage_update':

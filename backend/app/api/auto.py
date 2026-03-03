@@ -190,7 +190,6 @@ async def auto_step(request: AutoStepRequest):
             "pending_shutdown": session.pending_shutdown,
         }
         config = {"configurable": {"thread_id": session.session_id}}
-        customer_done = False  # 客户是否已完成回复
 
         try:
             async for event in customer_graph.astream_events(
@@ -247,14 +246,22 @@ async def auto_step(request: AutoStepRequest):
                                 if not customer_reply:
                                     customer_reply = msg.content
                                     yield _sse({"type": "customer_token", "content": msg.content})
-                        customer_done = True
 
                 elif kind == "on_chat_model_stream":
                     chunk = data.get("chunk")
-                    is_customer = langgraph_node == "customer" and not customer_done
+                    is_customer = langgraph_node == "customer"
                     if chunk and hasattr(chunk, "content") and chunk.content and is_customer:
                         customer_reply += chunk.content
                         yield _sse({"type": "customer_token", "content": chunk.content})
+                    # 捕获工具调用请求
+                    if chunk and hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks and is_customer:
+                        for tc in chunk.tool_call_chunks:
+                            if tc.get("name"):
+                                yield _sse({
+                                    "type": "customer_tool_call",
+                                    "tool": tc["name"],
+                                    "args": tc.get("args", ""),
+                                })
 
         except Exception as e:
             yield _sse({"type": "error", "content": f"客户Agent错误: {str(e)}"})
