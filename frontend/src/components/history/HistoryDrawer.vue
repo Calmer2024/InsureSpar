@@ -15,7 +15,6 @@ const emit = defineEmits<{
     evaluations: Evaluation[]
     finalReport: FinalReport | null
     info: HistorySession
-    resume: boolean
   }): void
 }>()
 
@@ -89,46 +88,6 @@ async function viewSession(s: HistorySession) {
       evaluations,
       finalReport,
       info: detail.session_info,
-      resume: false,
-    })
-  } catch (e) {
-    console.error('加载详情失败', e)
-  } finally {
-    detailLoading.value = false
-  }
-}
-
-async function resumeSession(s: HistorySession) {
-  detailLoading.value = true
-  try {
-    const detail = await fetchHistoryDetail(s.session_id)
-
-    const messages: ChatMessage[] = detail.conversation_logs
-      .filter(log => log.role === 'sales' || log.role === 'customer')
-      .map((log, i) => ({
-        id: `hist-${log.id}-${i}`,
-        role: log.role as 'sales' | 'customer',
-        content: log.content,
-        turn: log.turn,
-      }))
-
-    const evaluations: Evaluation[] = detail.evaluations.map(ev => ({
-      turn: ev.turn,
-      professionalism_score: ev.scores.professionalism,
-      compliance_score: ev.scores.compliance,
-      strategy_score: ev.scores.strategy,
-      professionalism_comment: ev.comments.professionalism,
-      compliance_comment: ev.comments.compliance,
-      strategy_comment: ev.comments.strategy,
-      overall_advice: ev.overall_advice,
-    }))
-
-    emit('view-session', {
-      messages,
-      evaluations,
-      finalReport: null,
-      info: detail.session_info,
-      resume: true,
     })
   } catch (e) {
     console.error('加载详情失败', e)
@@ -198,36 +157,26 @@ function timeAgo(iso: string | null): string {
               <div
                 v-for="s in sessions"
                 :key="s.session_id"
-                class="w-full text-left px-5 py-3.5 hover:bg-surface-hover transition-colors group relative"
+                class="w-full text-left px-5 py-3.5 hover:bg-surface-hover transition-colors cursor-pointer"
                 :class="{ 'opacity-50 pointer-events-none': detailLoading }"
+                @click="viewSession(s)"
               >
-                <div class="cursor-pointer" @click="viewSession(s)">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="text-sm">{{ stageIcon(s.final_stage) }}</span>
-                    <span class="text-xs font-semibold text-text-primary">{{ s.persona_id }}</span>
-                    <span v-if="s.strategy_id" class="text-[10px] px-1.5 py-0.5 rounded bg-primary-50 text-primary-600">{{ s.strategy_id }}</span>
-                    <span class="ml-auto text-[10px] text-text-muted">{{ timeAgo(s.start_time) }}</span>
-                  </div>
-                  <div class="flex items-center gap-3 text-[11px] text-text-secondary">
-                    <span>{{ s.turn_count }} 轮</span>
-                    <span v-if="s.final_stage" class="truncate">{{ s.final_stage }}</span>
-                    <span
-                      class="ml-auto px-1.5 py-0.5 rounded text-[10px] font-medium"
-                      :class="s.is_finished ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'"
-                    >
-                      {{ s.is_finished ? '已结束' : '进行中' }}
-                    </span>
-                  </div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-sm">{{ stageIcon(s.final_stage) }}</span>
+                  <span class="text-xs font-semibold text-text-primary">{{ s.persona_id }}</span>
+                  <span v-if="s.strategy_id" class="text-[10px] px-1.5 py-0.5 rounded bg-primary-50 text-primary-600">{{ s.strategy_id }}</span>
+                  <span class="ml-auto text-[10px] text-text-muted">{{ timeAgo(s.start_time) }}</span>
                 </div>
-                
-                <!-- 继续对练按钮 (悬浮显示) -->
-                <button
-                  v-if="!s.is_finished"
-                  class="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-primary-500 text-white rounded-lg shadow-sm text-xs font-bold hover:bg-primary-600 transition-all active:scale-95"
-                  @click.stop="resumeSession(s)"
-                >
-                  继续对练
-                </button>
+                <div class="flex items-center gap-3 text-[11px] text-text-secondary">
+                  <span>{{ s.turn_count }} 轮</span>
+                  <span v-if="s.final_stage" class="truncate">{{ s.final_stage }}</span>
+                  <span
+                    class="ml-auto px-1.5 py-0.5 rounded text-[10px] font-medium"
+                    :class="s.is_finished ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'"
+                  >
+                    {{ s.is_finished ? '已结束' : '进行中' }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

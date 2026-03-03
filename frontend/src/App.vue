@@ -276,6 +276,22 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number) {
 }
 
 /* ========================================
+ * 恢复继续对练
+ * ======================================== */
+async function handleResumeSession() {
+  if (!sessionId.value) return
+  isHistoryView.value = false
+  isFinished.value = false
+  appStatus.value = 'ready'
+  statusText.value = '会话已恢复，可继续输入或推进'
+  
+  // 恢复最新的拉取回合记录，以防重复获取
+  lastPolledTurn = evaluations.value.length > 0 ? Math.max(...evaluations.value.map(e => e.turn)) : 0
+  evaluations.value.forEach(e => renderedEvalTurns.add(e.turn))
+  startEvalPolling()
+}
+
+/* ========================================
  * 对话结束
  * ======================================== */
 function finishConversation(label: string, turn: number) {
@@ -351,11 +367,11 @@ function viewHistorySession(data: {
   evaluations: Evaluation[]
   finalReport: FinalReport | null
   info: any
-  resume: boolean
 }) {
   resetSession()
   showHistory.value = false
-  isHistoryView.value = !data.resume
+  isHistoryView.value = true
+  isFinished.value = data.info.is_finished
   messages.value = data.messages
   evaluations.value = data.evaluations
   finalReport.value = data.finalReport
@@ -363,23 +379,10 @@ function viewHistorySession(data: {
   stageLabel.value = data.info.final_stage || 'INTRODUCTION'
   sessionId.value = data.info.session_id
 
-  if (data.resume) {
-    isFinished.value = false
-    appStatus.value = 'ready'
-    statusText.value = '会话已恢复，可继续输入或推进'
-    chatTitle.value = `${data.info.persona_id} × ${data.info.strategy_id || '普通'}`
-    chatSubtitle.value = '从历史记录恢复的会话'
-    // 恢复最新的拉取回合记录，以防重复获取
-    lastPolledTurn = evaluations.value.length > 0 ? Math.max(...evaluations.value.map(e => e.turn)) : 0
-    evaluations.value.forEach(e => renderedEvalTurns.add(e.turn))
-    startEvalPolling()
-  } else {
-    isFinished.value = true
-    appStatus.value = 'finished'
-    statusText.value = '历史回放（只读）'
-    chatTitle.value = `📚 ${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
-    chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
-  }
+  appStatus.value = 'finished'
+  statusText.value = '历史回放（只读）'
+  chatTitle.value = `📚 ${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
+  chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
 }
 
 /* ========================================
@@ -410,16 +413,18 @@ function findMsg(id: string) { return messages.value.find(m => m.id === id) }
           :messages="messages"
           :title="chatTitle"
           :subtitle="chatSubtitle"
-          :disabled="isProcessing || !sessionId"
+          :disabled="appStatus === 'loading'"
           :is-finished="isFinished"
+          :is-history-view="isHistoryView"
           :auto-timer-active="autoTimerActive"
           @send="handleSend"
           @step="handleStep"
           @toggle-auto-timer="toggleAutoTimer"
+          @resume-session="handleResumeSession"
         />
       </div>
 
-      <!-- 考官评分面板 -->
+      <!-- 右侧：考官评分面板 -->
       <div class="w-[380px] shrink-0">
         <EvalPanel
           :evaluations="evaluations"

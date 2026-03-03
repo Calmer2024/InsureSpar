@@ -11,6 +11,7 @@ const props = defineProps<{
   subtitle: string
   disabled?: boolean
   isFinished?: boolean
+  isHistoryView?: boolean
   autoTimerActive?: boolean
 }>()
 
@@ -18,6 +19,7 @@ defineEmits<{
   (e: 'send', message: string): void
   (e: 'step'): void
   (e: 'toggle-auto-timer'): void
+  (e: 'resume-session'): void
 }>()
 
 const chatContainer = ref<HTMLElement>()
@@ -84,9 +86,21 @@ watch(
       </template>
     </div>
 
-    <!-- 输入区 -->
+    <!-- 历史记录未结束状态下的恢复按钮 -->
+    <div v-if="isHistoryView && !isFinished" class="px-5 py-4 border-t border-border bg-surface-card flex flex-col items-center justify-center shrink-0">
+      <p class="text-xs text-text-secondary mb-3">本次对练未正常结束，你可以随时从此处恢复对话</p>
+      <button
+        class="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:opacity-90 active:scale-[0.97] transition-all shadow-md"
+        @click="$emit('resume-session')"
+      >
+        恢复继续对练
+      </button>
+    </div>
+
+    <!-- 正常输入区 -->
     <ChatInput
-      :disabled="disabled || isFinished"
+      v-else
+      :disabled="disabled || isFinished || isHistoryView"
       :is-finished="isFinished"
       :auto-timer-active="autoTimerActive"
       @send="$emit('send', $event)"
