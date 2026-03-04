@@ -1,57 +1,66 @@
 <script setup lang="ts">
 import type { Evaluation } from '../../types'
 import ScoreBar from '../common/ScoreBar.vue'
+import { ref } from 'vue'
 
 defineProps<{
   evaluation: Evaluation
 }>()
 
-import { ref } from 'vue'
 const expanded = ref(false)
 </script>
 
 <template>
-  <div
-    class="bg-surface-card border border-border rounded-xl p-4 animate-slide-in-right transition-shadow duration-200 hover:shadow-[var(--shadow-card-hover)]"
-    :style="{ boxShadow: 'var(--shadow-card)' }"
-  >
-    <!-- 轮次标签 + 平均分 -->
-    <div class="flex items-center justify-between mb-3">
-      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary-100 text-primary-700 text-[11px] font-bold">
-        第 {{ evaluation.turn }} 轮
-      </span>
-      <span class="text-[11px] text-text-muted">
+  <div class="bg-white border border-[var(--color-border)] rounded-2xl p-5 animate-fade-in-up transition-all duration-300 hover:shadow-[var(--shadow-card)]">
+    
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-[var(--color-surface)] border border-[var(--color-border-light)] text-[var(--color-text-primary)] text-[11px] font-bold tracking-wide">
+          第 {{ evaluation.turn }} 轮
+        </span>
+      </div>
+      <div class="flex items-baseline gap-1.5 text-[11px] text-[var(--color-text-secondary)] font-medium">
         均分
-        <span class="font-bold text-text-primary ml-0.5">
+        <span class="text-lg font-bold text-[var(--color-text-primary)] tabular-nums tracking-tight">
           {{ ((evaluation.professionalism_score + evaluation.compliance_score + evaluation.strategy_score) / 3).toFixed(1) }}
         </span>
-      </span>
+      </div>
     </div>
 
-    <!-- 三维得分条 -->
-    <div class="space-y-2">
+    <div class="space-y-3 mb-4">
       <ScoreBar label="专业性" :score="evaluation.professionalism_score" />
       <ScoreBar label="合规性" :score="evaluation.compliance_score" />
       <ScoreBar label="策略性" :score="evaluation.strategy_score" />
     </div>
 
-    <!-- 综合建议 -->
-    <div class="mt-3 px-3 py-2 rounded-lg bg-amber-50 text-xs text-amber-700 leading-relaxed">
-      💡 {{ evaluation.overall_advice }}
+    <div class="px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border-light)] text-xs text-[var(--color-text-primary)] leading-relaxed">
+      <span class="font-semibold text-[var(--color-text-secondary)] mr-1">建议</span> 
+      {{ evaluation.overall_advice }}
     </div>
 
-    <!-- 展开详细点评 -->
     <button
-      class="mt-2 text-[11px] text-text-muted hover:text-primary-600 transition-colors"
+      class="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors rounded-lg hover:bg-[var(--color-surface)]"
       @click="expanded = !expanded"
     >
-      {{ expanded ? '收起详细 ▲' : '展开详细 ▼' }}
+      {{ expanded ? '收起明细' : '查看维度明细' }}
+      <svg class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': expanded }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
     </button>
 
-    <div v-if="expanded" class="mt-2 space-y-1.5 text-xs text-text-secondary leading-relaxed animate-fade-in">
-      <div><span class="font-semibold text-primary-600">💊 专业：</span>{{ evaluation.professionalism_comment }}</div>
-      <div><span class="font-semibold text-info">⚖️ 合规：</span>{{ evaluation.compliance_comment }}</div>
-      <div><span class="font-semibold text-warning">🎯 策略：</span>{{ evaluation.strategy_comment }}</div>
+    <div v-if="expanded" class="mt-2 space-y-3 px-1 text-xs text-[var(--color-text-secondary)] leading-relaxed animate-fade-in">
+      <div class="pt-2 border-t border-[var(--color-border-light)]">
+        <span class="font-bold text-[var(--color-text-primary)] block mb-0.5">专业深度</span>
+        {{ evaluation.professionalism_comment }}
+      </div>
+      <div>
+        <span class="font-bold text-[var(--color-text-primary)] block mb-0.5">合规红线</span>
+        {{ evaluation.compliance_comment }}
+      </div>
+      <div>
+        <span class="font-bold text-[var(--color-text-primary)] block mb-0.5">推进策略</span>
+        {{ evaluation.strategy_comment }}
+      </div>
     </div>
   </div>
 </template>

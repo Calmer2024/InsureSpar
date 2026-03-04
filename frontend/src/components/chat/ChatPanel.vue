@@ -55,28 +55,26 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col h-full min-w-0">
-    <!-- 对话头部 -->
-    <div class="px-5 py-3 border-b border-border bg-surface-card shrink-0">
-      <h2 class="text-sm font-semibold text-text-primary">{{ title }}</h2>
-      <p class="text-xs text-text-secondary mt-0.5">{{ subtitle }}</p>
+  <div class="flex flex-col h-full min-w-0 bg-white">
+    <div class="px-6 py-4 border-b border-[var(--color-border)] bg-white shrink-0 flex flex-col justify-center">
+      <h2 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">{{ title }}</h2>
+      <p class="text-xs text-[var(--color-text-secondary)] mt-1">{{ subtitle }}</p>
     </div>
 
-    <!-- 消息区域 -->
-    <div ref="chatContainer" class="flex-1 overflow-y-auto px-5 py-4 space-y-1">
-      <!-- 空状态 -->
-      <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center">
-        <div class="w-16 h-16 rounded-2xl bg-primary-50 flex items-center justify-center mb-4">
-          <span class="text-3xl">💬</span>
+    <div ref="chatContainer" class="flex-1 overflow-y-auto px-6 py-6">
+      <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center animate-fade-in">
+        <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] flex items-center justify-center mb-5 shadow-sm">
+          <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
         </div>
-        <p class="text-sm text-text-secondary">选择客户画像与销售策略开始对练</p>
-        <p class="text-xs text-text-muted mt-1">支持手动输入和 AI 自动推进</p>
+        <h3 class="text-sm font-medium text-[var(--color-text-primary)]">选择客户画像与策略</h3>
+        <p class="text-xs text-[var(--color-text-secondary)] mt-2 max-w-[200px]">配置完成后即可开始对练，支持手动输入和 AI 自动推进</p>
       </div>
 
-      <!-- 按轮次渲染消息 -->
       <template v-for="group in groupedMessages" :key="group.turn">
         <RoundDivider v-if="group.turn > 0" :turn="group.turn" />
-        <div class="space-y-2">
+        <div class="space-y-1">
           <ChatBubble
             v-for="msg in group.messages"
             :key="msg.id"
@@ -86,18 +84,13 @@ watch(
       </template>
     </div>
 
-    <!-- 历史记录未结束状态下的恢复按钮 -->
-    <div v-if="isHistoryView && !isFinished" class="px-5 py-4 border-t border-border bg-surface-card flex flex-col items-center justify-center shrink-0">
-      <p class="text-xs text-text-secondary mb-3">本次对练未正常结束，你可以随时从此处恢复对话</p>
-      <button
-        class="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:opacity-90 active:scale-[0.97] transition-all shadow-md"
-        @click="$emit('resume-session')"
-      >
+    <div v-if="isHistoryView && !isFinished" class="px-6 py-5 border-t border-[var(--color-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center shrink-0">
+      <p class="text-xs text-[var(--color-text-secondary)] mb-4">本次对练未正常结束，你可以随时从此处恢复对话</p>
+      <button class="cta-btn" @click="$emit('resume-session')">
         恢复继续对练
       </button>
     </div>
 
-    <!-- 正常输入区 -->
     <ChatInput
       v-else
       :disabled="disabled || isFinished || isHistoryView"

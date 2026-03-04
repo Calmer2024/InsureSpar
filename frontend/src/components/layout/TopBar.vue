@@ -17,48 +17,65 @@ defineEmits<{
 </script>
 
 <template>
-  <header class="h-14 bg-surface-card border-b border-border flex items-center justify-between px-6 shrink-0">
-    <!-- Logo -->
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-        <span class="text-white text-sm font-bold">IS</span>
+  <div class="w-full flex items-center justify-between h-10">
+    
+    <div class="flex items-center gap-3 shrink-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center shadow-sm border border-zinc-700/50">
+        <span class="text-white text-sm font-bold tracking-wider">IS</span>
       </div>
-      <span class="text-base font-bold text-text-primary tracking-tight">InsureSpar</span>
-      <span class="text-xs text-text-muted font-medium ml-1">对练平台</span>
+      <div class="flex flex-col">
+        <div class="flex items-center gap-2">
+          <span class="text-lg font-bold text-[var(--color-text-primary)] tracking-tight leading-none">InsureSpar</span>
+          <span class="px-1.5 py-0.5 rounded-md bg-[var(--color-surface-muted)] text-[9px] font-bold text-[var(--color-text-secondary)] tracking-widest uppercase">
+            Beta
+          </span>
+        </div>
+        <span class="text-[11px] text-[var(--color-text-muted)] font-medium mt-1 leading-none">保险销售对练系统</span>
+      </div>
     </div>
 
-    <!-- 中间 -->
-    <div class="flex items-center gap-3">
-      <button
-        class="px-4 py-1.5 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 text-xs font-bold text-white hover:opacity-90 active:scale-[0.97] transition-all shadow-sm"
-        @click="$emit('new-session')"
-      >
-        ＋ 新对练
-      </button>
-      <button
-        class="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-secondary hover:border-primary-400 hover:text-primary-600 transition-all"
-        @click="$emit('show-history')"
-      >
-        📚 历史
-      </button>
-    </div>
-
-    <!-- 右侧状态 -->
-    <div class="flex items-center gap-5 text-xs">
-      <div class="flex items-center gap-1.5">
+    <div class="hidden md:flex flex-1 items-center justify-center gap-3 text-xs">
+      
+      <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[var(--color-border)] shadow-sm transition-all duration-300">
         <StatusDot :status="status" />
-        <span class="text-text-secondary truncate max-w-[140px]">{{ statusText }}</span>
+        <span class="text-[var(--color-text-primary)] font-medium truncate max-w-[160px]">{{ statusText }}</span>
       </div>
-      <div v-if="turnCount > 0" class="flex items-center gap-1 text-text-secondary">
+
+      <div v-if="turnCount > 0" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border-light)] text-[var(--color-text-secondary)] font-medium animate-fade-in">
         <span>回合</span>
-        <span class="font-bold text-text-primary">{{ turnCount }}</span>
+        <span class="text-[var(--color-text-primary)] font-bold tabular-nums">{{ turnCount }}</span>
       </div>
-      <div v-if="sessionId" class="text-text-secondary truncate max-w-[150px]">
+
+      <div v-if="sessionId" class="flex items-center px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border-light)] text-[var(--color-text-secondary)] font-medium truncate max-w-[140px] animate-fade-in">
         {{ stageLabel }}
       </div>
-      <div v-if="sessionId" class="text-text-muted font-mono text-[10px]">
-        {{ sessionId.substring(0, 8) }}
+
+      <div v-if="sessionId" class="font-mono text-[10px] text-[var(--color-text-muted)] opacity-50 hover:opacity-100 transition-opacity cursor-default animate-fade-in ml-2">
+        #{{ sessionId.substring(0, 8) }}
       </div>
     </div>
-  </header>
+
+    <div class="flex items-center gap-3 shrink-0">
+      <button
+        class="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-white text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all shadow-sm active:scale-[0.98]"
+        @click="$emit('show-history')"
+      >
+        <svg class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        历史
+      </button>
+
+      <button
+        class="cta-btn gap-1.5 px-5"
+        @click="$emit('new-session')"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        新对练
+      </button>
+    </div>
+
+  </div>
 </template>

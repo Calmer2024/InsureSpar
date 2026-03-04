@@ -27,80 +27,71 @@ function handleSend(emit: (e: 'send', msg: string) => void) {
 </script>
 
 <template>
-  <!-- 结束状态 -->
-  <div v-if="isFinished" class="px-5 py-3 border-t border-border bg-surface-card flex items-center justify-center gap-3 shrink-0">
-    <span class="text-xs text-text-muted">对话已结束</span>
+  <div v-if="isFinished" class="px-6 py-4 border-t border-[var(--color-border)] bg-white flex items-center justify-center shrink-0">
+    <span class="text-sm text-[var(--color-text-muted)] font-medium">对话已结束</span>
   </div>
 
-  <!-- 统一输入区 -->
   <div v-else class="relative shrink-0">
-    <!-- 工具箱弹出面板 -->
     <ToolboxPanel
       :visible="showToolbox"
       @close="showToolbox = false"
     />
 
-    <div class="px-5 py-3 border-t border-border bg-surface-card flex gap-3 items-center">
-      <!-- 🧰 工具箱按钮 -->
+    <div class="px-6 py-4 border-t border-[var(--color-border)] bg-white flex gap-3 items-center">
       <button
         :disabled="disabled"
-        class="w-9 h-9 flex items-center justify-center rounded-xl text-lg transition-all duration-200 border"
+        class="w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-all duration-200 border"
         :class="showToolbox
-          ? 'bg-primary-500 text-white border-primary-500 rotate-45 shadow-sm'
-          : 'border-border-light text-text-secondary hover:border-primary-300 hover:text-primary-600 bg-surface-card'"
+          ? 'bg-zinc-900 text-white border-zinc-900 rotate-45 shadow-sm'
+          : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)] bg-white'"
         @click="showToolbox = !showToolbox"
         title="工具箱"
       >
         {{ showToolbox ? '+' : '🧰' }}
       </button>
 
-      <!-- 文本输入 -->
       <input
         v-model="inputText"
         type="text"
         :placeholder="placeholder || '输入你的销售话术…'"
         :disabled="disabled"
-        class="flex-1 bg-surface-muted border border-border-light rounded-xl px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 disabled:opacity-40"
+        class="flex-1 bg-[var(--color-surface)] border border-[var(--color-border-light)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-all duration-200 focus:bg-white focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10 disabled:opacity-50"
         @keypress.enter="handleSend($emit)"
         @focus="showToolbox = false"
       />
 
-      <!-- 发送按钮 -->
       <button
         :disabled="disabled || !inputText.trim()"
-        class="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:opacity-90 active:scale-[0.97] transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+        class="cta-btn disabled:opacity-40 disabled:cursor-not-allowed"
         @click="handleSend($emit)"
       >
         发送
       </button>
 
-      <!-- 分割线 -->
-      <div class="w-px h-7 bg-border" />
+      <div class="w-px h-6 bg-[var(--color-border)] mx-1" />
 
-      <!-- AI 推进按钮 -->
       <button
         :disabled="disabled"
-        class="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+        class="px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed border"
         :class="autoTimerActive
-          ? 'bg-primary-500 text-white hover:bg-primary-600'
-          : 'border border-border text-text-secondary hover:border-primary-400 hover:text-primary-600 bg-surface-card'"
+          ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm'
+          : 'bg-white border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] shadow-sm'"
         @click="$emit('step')"
       >
-        ▶ AI 推进
+        AI 推进
       </button>
 
-      <!-- 自动连续推进 -->
       <button
         :disabled="disabled && !autoTimerActive"
-        class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border"
+        class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border"
         :class="autoTimerActive
-          ? 'bg-primary-500 text-white border-primary-500 shadow-sm shadow-primary-200'
-          : 'border-border-light text-text-muted hover:border-primary-300 hover:text-primary-600 bg-surface-card'"
+          ? 'bg-zinc-100 text-zinc-900 border-zinc-200 shadow-inner'
+          : 'bg-white border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]'"
         @click="$emit('toggle-auto-timer')"
       >
         <span
           class="w-2 h-2 rounded-full transition-colors"
-          :class="autoTimerActive ? 'bg-white animate-pulse-dot' : 'bg-text-muted'"
+          :class="autoTimerActive ? 'bg-zinc-900 animate-pulse-dot' : 'bg-[var(--color-text-muted)]'"
         />
         {{ autoTimerActive ? '推进中' : '连续' }}
       </button>

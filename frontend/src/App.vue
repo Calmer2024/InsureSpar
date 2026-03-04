@@ -161,25 +161,21 @@ async function handleSend(message: string) {
 
 function handleManualSSE(ev: SSEEvent, cid: string, turn: number, ensureCustomer: () => void) {
   switch (ev.type) {
-    // 状态 → 仅更新顶栏，不写入聊天
     case 'status':
       statusText.value = ev.content || ''
       break
-    // 工具（客户侧） — 排在客户对话框之前
     case 'tool_call':
       addSys(`调用 ${ev.tool}…`, turn, 'tool_call', ev.tool)
       break
     case 'tool_result':
       addSys(`${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
       break
-    // 打字机 — 首个 token 到达时才创建客户占位
     case 'token': {
       ensureCustomer()
       const cm = findMsg(cid)
       if (cm) { cm.isStreaming = false; cm.content += ev.content || '' }
       break
     }
-    // 阶段 — 排在客户对话框之后
     case 'stage_update': {
       turnCount.value = ev.turn_count || turnCount.value
       stageLabel.value = ev.detected_stage_label || ev.stage_label || stageLabel.value
@@ -190,7 +186,6 @@ function handleManualSSE(ev: SSEEvent, cid: string, turn: number, ensureCustomer
     case 'force_guard':
       addSys(ev.content || '', turn, 'force_guard')
       break
-    // 完成
     case 'done': {
       ensureCustomer()
       const cm = findMsg(cid)
@@ -224,7 +219,6 @@ async function handleStep() {
   const sid = mid()
   const cid = mid()
 
-  // 懒创建占位消息 — 保证工具调用排在对应 Agent 对话框之前
   let salesPushed = false
   let customerPushed = false
   const ensureSales = () => {
@@ -235,13 +229,12 @@ async function handleStep() {
   }
   const ensureCustomer = () => {
     if (!customerPushed) {
-      ensureSales() // 销售消息必须排在客户消息之前
+      ensureSales() 
       messages.value.push({ id: cid, role: 'customer', content: '', turn, isStreaming: true })
       customerPushed = true
     }
   }
 
-  // 立即显示销售 Agent 打字指示器，提供即时视觉反馈
   ensureSales()
 
   await apiAutoStep(sessionId.value, (ev) => {
@@ -256,20 +249,17 @@ async function handleStep() {
 
 function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number, ensureSales: () => void, ensureCustomer: () => void) {
   switch (ev.type) {
-    // 状态 → 仅顶栏，不写入聊天
     case 'phase':
     case 'customer_status':
     case 'sales_thinking':
       statusText.value = ev.content || ''
       break
-    // 销售工具 — 插入到销售占位符之前
     case 'sales_tool_call':
       insertSysBefore(sid, `销售工具 ${ev.tool}`, turn, 'tool_call', ev.tool)
       break
     case 'sales_tool_result':
       insertSysBefore(sid, `${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
       break
-    // 销售打字机
     case 'sales_token': {
       ensureSales()
       const sm = findMsg(sid)
@@ -281,10 +271,9 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number, ens
       const sm = findMsg(sid)
       if (sm) { sm.isStreaming = false; if (!sm.content && ev.content) sm.content = ev.content }
       statusText.value = '客户思考中…'
-      ensureCustomer() // 立即显示客户打字指示器
+      ensureCustomer() 
       break
     }
-    // 客户工具 — 插入到客户占位符之前
     case 'customer_tool_call':
       ensureSales()
       insertSysBefore(cid, `【客户】工具 ${ev.tool}`, turn, 'tool_call', ev.tool)
@@ -293,14 +282,12 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number, ens
       ensureSales()
       insertSysBefore(cid, `【客户】${ev.tool}: ${(ev.content || '').substring(0, 100)}`, turn, 'tool_result', ev.tool)
       break
-    // 客户打字机 — 首个 token 到达时才创建占位
     case 'customer_token': {
       ensureCustomer()
       const cm = findMsg(cid)
       if (cm) { cm.isStreaming = false; cm.content += ev.content || '' }
       break
     }
-    // 阶段 — 排在客户对话框之后
     case 'stage_update': {
       turnCount.value = ev.turn_count || turnCount.value
       stageLabel.value = ev.detected_stage_label || ev.stage_label || stageLabel.value
@@ -311,7 +298,6 @@ function handleAutoSSE(ev: SSEEvent, sid: string, cid: string, turn: number, ens
     case 'force_guard':
       addSys(ev.content || '', turn, 'force_guard')
       break
-    // 完成
     case 'step_done': {
       ensureSales()
       ensureCustomer()
@@ -352,7 +338,6 @@ function finishConversation(label: string, turn: number) {
   appStatus.value = 'finished'
   statusText.value = `对话结束 — ${label}`
   addSys(`对话结束 — ${label}`, turn, 'stage_update')
-  // 自动获取终极报告
   loadFinalReport()
 }
 
@@ -376,7 +361,6 @@ function toggleAutoTimer() {
     stopAutoTimer()
   } else {
     autoTimerActive.value = true
-    // 立即执行一次
     if (!isProcessing.value && sessionId.value && !isFinished.value) handleStep()
     autoTimer = setInterval(() => {
       if (!isProcessing.value && sessionId.value && !isFinished.value) handleStep()
@@ -433,11 +417,9 @@ function viewHistorySession(data: {
   stageLabel.value = data.info.final_stage || 'INTRODUCTION'
   sessionId.value = data.info.session_id
 
-  // ====== 关键修复：同步状态变量 ======
   lastPolledTurn = evaluations.value.length > 0 ? Math.max(...evaluations.value.map(e => e.turn)) : 0
   renderedEvalTurns.clear()
   evaluations.value.forEach(e => renderedEvalTurns.add(e.turn))
-  // ===================================
 
   appStatus.value = 'finished'
   statusText.value = '历史回放（只读）'
@@ -451,7 +433,6 @@ function viewHistorySession(data: {
 function addSys(content: string, turn: number, logType: string, toolName?: string) {
   messages.value.push({ id: mid(), role: 'system', content, turn, logType: logType as any, toolName })
 }
-/** 在指定 id 消息之前插入系统消息（用于让工具调用排在对话框前面） */
 function insertSysBefore(beforeId: string, content: string, turn: number, logType: string, toolName?: string) {
   const msg = { id: mid(), role: 'system' as const, content, turn, logType: logType as any, toolName }
   const idx = messages.value.findIndex(m => m.id === beforeId)
@@ -463,7 +444,6 @@ function insertSysBefore(beforeId: string, content: string, turn: number, logTyp
 }
 function findMsg(id: string) { return messages.value.find(m => m.id === id) }
 
-/** 构建阶段显示文本：当检测阶段被防线覆盖时，显示实际检测结果 + 确认进度 */
 function buildStageText(ev: SSEEvent): string {
   const rawStage = ev.detected_stage_raw || ev.stage || ''
   const finalStage = ev.stage || ''
@@ -473,36 +453,35 @@ function buildStageText(ev: SSEEvent): string {
   const required = ev.decision_strikes_required || 2
   const turn = ev.turn_count || 0
 
-  // 如果检测阶段与最终阶段一致，正常显示
   if (rawStage === finalStage) {
     return `${finalLabel}（第${turn}轮）`
   }
   
-  // 被强制拖回异议区的提示
   if (strike === 0) {
      return `${rawLabel}（过早试探底线，被强制拖回异议区）`
   }
 
-  // 检测到决策但被打回 → 显示实际检测到的阶段 + 确认进度
   return `${rawLabel}（确认中 ${strike}/${required}，再次确认则对话结束）`
 }
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-surface">
-    <TopBar
-      :status="appStatus"
-      :status-text="statusText"
-      :turn-count="turnCount"
-      :stage-label="stageLabel"
-      :session-id="sessionId"
-      @new-session="handleNewSession"
-      @show-history="showHistory = true"
-    />
+  <div class="h-screen w-full flex flex-col bg-[var(--color-surface)] text-[var(--color-text-primary)] font-sans selection:bg-zinc-200">
+    <header class="px-6 py-5 flex-shrink-0 z-10">
+      <TopBar
+        :status="appStatus"
+        :status-text="statusText"
+        :turn-count="turnCount"
+        :stage-label="stageLabel"
+        :session-id="sessionId"
+        @new-session="handleNewSession"
+        @show-history="showHistory = true"
+      />
+    </header>
 
-    <div class="flex flex-1 min-h-0">
-      <!-- 聊天面板 -->
-      <div class="flex-1 min-w-0 border-r border-border">
+    <main class="flex flex-1 min-h-0 px-6 pb-6 gap-6 max-w-[1800px] mx-auto w-full">
+      
+      <section class="flex-1 flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden transition-all duration-300">
         <ChatPanel
           :messages="messages"
           :title="chatTitle"
@@ -516,20 +495,18 @@ function buildStageText(ev: SSEEvent): string {
           @toggle-auto-timer="toggleAutoTimer"
           @resume-session="handleResumeSession"
         />
-      </div>
+      </section>
 
-      <!-- 右侧：考官评分面板 -->
-      <div class="w-[380px] shrink-0">
+      <aside class="w-[420px] shrink-0 flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden transition-all duration-300">
         <EvalPanel
           :evaluations="evaluations"
           :final-report="finalReport"
           :report-loading="reportLoading"
           :is-finished="isFinished"
         />
-      </div>
-    </div>
+      </aside>
+    </main>
 
-    <!-- 弹窗 -->
     <SessionSetupModal
       :visible="showSetupModal"
       :personas="personas"
@@ -538,7 +515,6 @@ function buildStageText(ev: SSEEvent): string {
       @close="showSetupModal = false"
     />
 
-    <!-- 历史抽屉 -->
     <HistoryDrawer
       :visible="showHistory"
       @close="showHistory = false"
