@@ -37,9 +37,15 @@ defineEmits<{
 
     <div class="hidden md:flex flex-1 items-center justify-center gap-3 text-xs">
       
-      <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[var(--color-border)] shadow-sm transition-all duration-300">
+      <div class="status-pill flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[var(--color-border)] shadow-sm transition-all duration-300">
         <StatusDot :status="status" />
-        <RichText :text="statusText" class="text-[var(--color-text-primary)] font-medium truncate max-w-[160px]" />
+        <div class="status-marquee-wrapper">
+          <div class="status-marquee-track" :key="statusText">
+            <RichText :text="statusText" class="text-[var(--color-text-primary)] font-medium whitespace-nowrap" />
+            <span class="status-marquee-spacer">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            <RichText :text="statusText" class="text-[var(--color-text-primary)] font-medium whitespace-nowrap" />
+          </div>
+        </div>
       </div>
 
       <div v-if="turnCount > 0" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border-light)] text-[var(--color-text-secondary)] font-medium animate-fade-in">
@@ -80,3 +86,31 @@ defineEmits<{
 
   </div>
 </template>
+
+<style scoped>
+.status-marquee-wrapper {
+  overflow: hidden;
+  max-width: 200px;
+  mask-image: linear-gradient(to right, transparent, black 6px, black calc(100% - 6px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 6px, black calc(100% - 6px), transparent);
+}
+
+.status-marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee-continuous 7s linear infinite;
+}
+
+.status-marquee-spacer {
+  flex-shrink: 0;
+}
+
+@keyframes marquee-continuous {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+</style>
