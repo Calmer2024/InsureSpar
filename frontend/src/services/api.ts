@@ -251,6 +251,7 @@ export interface HistoryDetail {
         radar_data: string | null
         review_content: string | null
         created_at: string | null
+        per_turn_scores?: any[]
     } | null
 }
 

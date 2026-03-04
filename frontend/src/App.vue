@@ -87,6 +87,7 @@ function resetSession() {
   turnCount.value = 0
   stageLabel.value = '等待启动'
   isFinished.value = false
+  isHistoryView.value = false
   isPendingShutdown.value = false
   isProcessing.value = false
   appStatus.value = 'idle'
@@ -102,12 +103,12 @@ function resetSession() {
 }
 
 function handleNewSession() {
-  resetSession()
   showSetupModal.value = true
 }
 
 async function onStart(personaId: string, strategyId: string) {
   showSetupModal.value = false
+  resetSession()
   try {
     const r = await createAutoSession(personaId, strategyId)
     sessionId.value = r.session_id
@@ -408,8 +409,8 @@ function viewHistorySession(data: {
 }) {
   resetSession()
   showHistory.value = false
-  isHistoryView.value = true
   isFinished.value = Boolean(data.info.is_finished)
+  isHistoryView.value = isFinished.value
   messages.value = data.messages
   evaluations.value = data.evaluations
   finalReport.value = data.finalReport
@@ -421,8 +422,15 @@ function viewHistorySession(data: {
   renderedEvalTurns.clear()
   evaluations.value.forEach(e => renderedEvalTurns.add(e.turn))
 
-  appStatus.value = 'finished'
-  statusText.value = '历史回放（只读）'
+  if (isFinished.value) {
+    appStatus.value = 'finished'
+    statusText.value = '历史回放（只读）'
+  } else {
+    appStatus.value = 'ready'
+    statusText.value = '会话已恢复，可继续输入或推进'
+    startEvalPolling()
+  }
+
   chatTitle.value = `${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
   chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
 }
@@ -486,7 +494,7 @@ function buildStageText(ev: SSEEvent): string {
           :messages="messages"
           :title="chatTitle"
           :subtitle="chatSubtitle"
-          :disabled="appStatus === 'loading'"
+          :disabled="appStatus === 'processing'"
           :is-finished="isFinished"
           :is-history-view="isHistoryView"
           :auto-timer-active="autoTimerActive"
@@ -517,6 +525,7 @@ function buildStageText(ev: SSEEvent): string {
 
     <HistoryDrawer
       :visible="showHistory"
+      :current-session-id="sessionId"
       @close="showHistory = false"
       @view-session="viewHistorySession"
     />

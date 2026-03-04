@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import type { HistorySession, HistoryDetail } from '../../services/api'
 import { fetchHistorySessions, fetchHistoryDetail } from '../../services/api'
 import type { ChatMessage, Evaluation, FinalReport } from '../../types'
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
+  currentSessionId?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -22,7 +23,11 @@ const sessions = ref<HistorySession[]>([])
 const loading = ref(false)
 const detailLoading = ref(false)
 
-onMounted(loadSessions)
+watch(() => props.visible, (val) => {
+  if (val) {
+    loadSessions()
+  }
+}, { immediate: true })
 
 async function loadSessions() {
   loading.value = true
@@ -80,6 +85,7 @@ async function viewSession(s: HistorySession) {
         strategy_id: s.strategy_id || undefined,
         final_stage: s.final_stage || undefined,
         turn_count: s.turn_count,
+        per_turn_scores: fr.per_turn_scores || [],
       }
     }
 
@@ -153,10 +159,17 @@ function timeAgo(iso: string | null): string {
               <div
                 v-for="s in sessions"
                 :key="s.session_id"
-                class="group w-full text-left bg-white border border-[var(--color-border)] rounded-xl p-4 hover:border-zinc-300 hover:shadow-sm transition-all duration-200 cursor-pointer"
-                :class="{ 'opacity-50 pointer-events-none scale-[0.98]': detailLoading }"
+                class="group w-full text-left rounded-xl p-4 transition-all duration-200 cursor-pointer border relative overflow-hidden"
+                :class="[
+                  detailLoading ? 'opacity-50 pointer-events-none scale-[0.98]' : 'hover:border-[#4ADE80]/30 hover:shadow-sm',
+                  s.session_id === currentSessionId ? 'border-[#4ADE80] bg-[#4ADE80]/5 shadow-sm' : 'bg-white border-[var(--color-border)]'
+                ]"
                 @click="viewSession(s)"
               >
+                <!-- 当前会话大头贴标识 -->
+                <div v-if="s.session_id === currentSessionId" class="absolute top-0 right-0 bg-[#4ADE80] text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg tracking-wider shadow-sm z-10">
+                  CURRENT
+                </div>
                 <div class="flex items-center justify-between mb-3">
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-md flex items-center justify-center border"
