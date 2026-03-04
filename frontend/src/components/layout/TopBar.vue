@@ -20,8 +20,8 @@ defineEmits<{
   <div class="w-full flex items-center justify-between h-10">
     
     <div class="flex items-center gap-3 shrink-0">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center shadow-sm border border-zinc-700/50">
-        <span class="text-white text-sm font-bold tracking-wider">IS</span>
+      <div class="w-9 h-9 rounded-xl overflow-hidden shadow-sm border border-zinc-200">
+        <img src="/logo.png" alt="InsureSpar Logo" class="w-full h-full object-cover" />
       </div>
       <div class="flex flex-col">
         <div class="flex items-center gap-2">

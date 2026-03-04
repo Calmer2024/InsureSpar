@@ -27,80 +27,82 @@ function handleSend(emit: (e: 'send', msg: string) => void) {
 </script>
 
 <template>
-  <div v-if="isFinished" class="px-6 py-4 border-t border-[var(--color-border)] bg-white flex items-center justify-center shrink-0">
-    <span class="text-sm text-[var(--color-text-muted)] font-medium">对话已结束</span>
+  <div v-if="isFinished" class="absolute bottom-6 left-8 right-8 bg-white/80 backdrop-blur-xl border border-white/60 shadow-lg rounded-2xl p-5 flex flex-col items-center justify-center z-10 animate-fade-in-up">
+    <span class="text-sm text-gray-800 font-bold mb-1">本轮对练已结束</span>
+    <span class="text-xs text-gray-500">请在右侧查看考官详细评估报告</span>
   </div>
 
-  <div v-else class="relative shrink-0">
+  <div v-else class="absolute bottom-6 left-8 right-8 flex items-end gap-3 z-10">
+    
     <ToolboxPanel
       :visible="showToolbox"
       @close="showToolbox = false"
     />
 
-    <div class="px-6 py-4 border-t border-[var(--color-border)] bg-white flex gap-3 items-center">
+    <div class="relative shrink-0 group mb-1 animate-fade-in">
       <button
         :disabled="disabled"
-        class="w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 border"
-        :class="showToolbox
-          ? 'bg-zinc-900 text-white border-zinc-900 rotate-45 shadow-sm'
-          : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)] bg-white'"
+        class="w-[46px] h-[46px] rounded-full flex items-center justify-center text-xl transition-all duration-300 shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
+        :class="showToolbox ? 'bg-gray-100 text-gray-800 rotate-45' : 'bg-[#1A1A1A] text-white hover:scale-105 hover:bg-black'"
         @click="showToolbox = !showToolbox"
-        title="工具箱"
       >
-        <svg v-if="showToolbox" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        <svg v-else class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        +
       </button>
+      <div class="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[10px] font-medium rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
+        {{ showToolbox ? '关闭工具箱' : '打开工具箱' }}
+      </div>
+    </div>
 
+    <div class="flex-1 bg-white/80 backdrop-blur-2xl border border-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] rounded-[24px] p-2.5 flex flex-col transition-all focus-within:bg-white focus-within:shadow-[0_12px_50px_rgba(0,0,0,0.08)] animate-fade-in-up">
+      
       <input
         v-model="inputText"
         type="text"
-        :placeholder="placeholder || '输入你的销售话术…'"
+        :placeholder="placeholder || 'Ask or search anything...'"
         :disabled="disabled"
-        class="flex-1 bg-[var(--color-surface)] border border-[var(--color-border-light)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-primary)] outline-none transition-all duration-200 focus:bg-white focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10 disabled:opacity-50"
+        class="w-full bg-transparent px-4 py-3 text-[14px] text-gray-800 placeholder-gray-400 outline-none disabled:opacity-50"
         @keypress.enter="handleSend($emit)"
         @focus="showToolbox = false"
       />
 
-      <button
-        :disabled="disabled || !inputText.trim()"
-        class="cta-btn disabled:opacity-40 disabled:cursor-not-allowed"
-        @click="handleSend($emit)"
-      >
-        发送
-      </button>
+      <div class="flex items-center justify-between mt-2 px-1">
+        <div class="flex items-center gap-2">
+          <button 
+            :disabled="disabled && !autoTimerActive"
+            class="bg-[#F5F5F5] text-gray-600 rounded-full px-3.5 py-1.5 text-[12px] font-medium flex items-center gap-1.5 transition-colors"
+            :class="autoTimerActive ? 'bg-[#EAF5F0] text-[#1E7B44]' : 'hover:bg-gray-200'"
+            @click="$emit('toggle-auto-timer')"
+          >
+            <span class="w-2.5 h-2.5 rounded-full transition-colors" :class="autoTimerActive ? 'bg-[#4ADE80] animate-pulse' : 'bg-gray-400'" />
+            连续推演
+          </button>
+          <span class="text-[12px] text-gray-400 px-1 select-none">|</span>
+          <span class="text-[11px] text-gray-400 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            支持手动输入
+          </span>
+        </div>
 
-      <div class="w-px h-6 bg-[var(--color-border)] mx-1" />
-
-      <button
-        :disabled="disabled"
-        class="px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed border"
-        :class="autoTimerActive
-          ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm'
-          : 'bg-white border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] shadow-sm'"
-        @click="$emit('step')"
-      >
-        AI 推进
-      </button>
-
-      <button
-        :disabled="disabled && !autoTimerActive"
-        class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border"
-        :class="autoTimerActive
-          ? 'bg-zinc-100 text-zinc-900 border-zinc-200 shadow-inner'
-          : 'bg-white border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]'"
-        @click="$emit('toggle-auto-timer')"
-      >
-        <span
-          class="w-2 h-2 rounded-full transition-colors"
-          :class="autoTimerActive ? 'bg-zinc-900 animate-pulse-dot' : 'bg-[var(--color-text-muted)]'"
-        />
-        {{ autoTimerActive ? '推进中' : '连续' }}
-      </button>
+        <div class="flex items-center gap-3">
+          <button
+            :disabled="disabled"
+            class="text-gray-500 hover:text-gray-900 text-[12px] font-bold flex items-center gap-1.5 transition-colors disabled:opacity-40"
+            @click="$emit('step')"
+          >
+            ✨ AI 推进
+          </button>
+          
+          <button
+            :disabled="disabled || !inputText.trim()"
+            class="w-9 h-9 rounded-full bg-[#1A1A1A] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:scale-100 hover:scale-105 hover:bg-black shadow-md"
+            @click="handleSend($emit)"
+          >
+            <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
