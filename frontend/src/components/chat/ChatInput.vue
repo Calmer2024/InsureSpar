@@ -79,7 +79,7 @@ function handleSend(emit: (e: 'send', msg: string) => void) {
           
           <button 
             :disabled="disabled && !autoTimerActive"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all duration-200 border active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 border active:scale-95 disabled:opacity-50 disabled:active:scale-100"
             :class="autoTimerActive ? 'bg-[#E6F3EC] text-[#1E7B44] border-[#4ADE80]/30 shadow-inner' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-700 shadow-sm'"
             @click="$emit('toggle-auto-timer')"
           >
@@ -92,7 +92,7 @@ function handleSend(emit: (e: 'send', msg: string) => void) {
 
           <button
             :disabled="disabled"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all duration-200 border shadow-sm active:scale-95 disabled:opacity-40 disabled:active:scale-100 bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 border shadow-sm active:scale-95 disabled:opacity-40 disabled:active:scale-100 bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700 hover:bg-gray-50"
             @click="$emit('step')"
             title="单次 AI 推进"
           >
