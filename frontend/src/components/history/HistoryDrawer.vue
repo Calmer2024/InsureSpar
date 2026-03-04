@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { HistorySession, HistoryDetail } from '../../services/api'
+import type { HistorySession } from '../../services/api'
 import { fetchHistorySessions, fetchHistoryDetail } from '../../services/api'
 import type { ChatMessage, Evaluation, FinalReport } from '../../types'
 

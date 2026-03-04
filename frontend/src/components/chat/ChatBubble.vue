@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import type { ChatMessage } from '../../types'
+import type { ChatMessage, Persona } from '../../types'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
   message: ChatMessage
+  activePersona?: Persona | null
 }>()
 
-const isToolMsg = computed(() =>
-  props.message.logType === 'tool_call' || props.message.logType === 'tool_result'
-)
+
 
 const truncLen = 80
 const isTruncated = computed(() => props.message.content.length > truncLen && props.message.role === 'system')
@@ -69,7 +68,8 @@ const displayContent = computed(() => {
   <div v-else-if="message.role === 'customer'" class="flex gap-4 w-full mb-6 group animate-fade-in-up">
     <div class="shrink-0 mt-1">
       <div class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center shadow-sm border border-white text-lg overflow-hidden">
-        🧑🏻
+        <img v-if="activePersona?.persona_id" :src="`http://127.0.0.1:8000/assets/avatars/${activePersona.persona_id}.png`" alt="Customer" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div :style="{ display: activePersona?.persona_id ? 'none' : 'flex' }" class="w-full h-full items-center justify-center">🧑🏻</div>
       </div>
     </div>
 

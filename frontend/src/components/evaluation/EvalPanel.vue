@@ -5,7 +5,7 @@ import FinalReportInline from './FinalReportInline.vue'
 
 defineProps<{
   evaluations: Evaluation[]
-  finalReport?: FinalReport | null
+  finalReport: FinalReport | null
   reportLoading?: boolean
   isFinished?: boolean
 }>()

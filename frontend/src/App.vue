@@ -45,6 +45,7 @@ const isHistoryView = ref(false)
 // ── 标题 ──
 const chatTitle = ref('对话面板')
 const chatSubtitle = ref('点击"新对练"开始')
+const activePersona = ref<Persona | null>(null)
 
 // ── 评分轮询 ──
 let evalPollTimer: ReturnType<typeof setInterval> | null = null
@@ -98,6 +99,7 @@ function resetSession() {
   reportLoading.value = false
   chatTitle.value = '对话面板'
   chatSubtitle.value = '点击"新对练"开始'
+  activePersona.value = null
   if (evalPollTimer) { clearInterval(evalPollTimer); evalPollTimer = null }
   stopAutoTimer()
 }
@@ -114,6 +116,7 @@ async function onStart(personaId: string, strategyId: string) {
     sessionId.value = r.session_id
     chatTitle.value = `${r.persona_name} × ${r.strategy_name}`
     chatSubtitle.value = `${r.persona_description}`
+    activePersona.value = personas.value.find(p => p.persona_id === r.persona_id) || null
     appStatus.value = 'ready'
     statusText.value = '就绪 — 输入话术或点击 AI 推进'
     addSys('会话已创建，可手动输入或 AI 推进', 0, 'status')
@@ -431,6 +434,8 @@ function viewHistorySession(data: {
     startEvalPolling()
   }
 
+  activePersona.value = personas.value.find(p => p.name === data.info.persona_id || p.persona_id === data.info.persona_id) || null
+
   chatTitle.value = `${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
   chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
 }
@@ -494,6 +499,7 @@ function buildStageText(ev: SSEEvent): string {
           :messages="messages"
           :title="chatTitle"
           :subtitle="chatSubtitle"
+          :active-persona="activePersona"
           :disabled="appStatus === 'processing'"
           :is-finished="isFinished"
           :is-history-view="isHistoryView"
