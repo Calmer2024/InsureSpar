@@ -32,13 +32,13 @@ TOOL_EXECUTOR = {
 
 # 阶段中文标签
 STAGE_LABELS = {
-    DialogueStage.INTRODUCTION:       "💬 破冰与探寻",
-    DialogueStage.OBJECTION:          "⚡ 异议处理",
-    DialogueStage.DECISION_SIGN:      "✅ 签单成功",
-    DialogueStage.DECISION_PENDING:   "📋 同意核保",
-    DialogueStage.DECISION_FOLLOW_UP: "📞 需要跟进",
-    DialogueStage.DECISION_REJECT:    "❌ 客户拒绝",
-    DialogueStage.DECISION_ABANDON:   "🚫 放弃投保",
+    DialogueStage.INTRODUCTION:       "破冰与探寻",
+    DialogueStage.OBJECTION:          "异议处理",
+    DialogueStage.DECISION_SIGN:      "签单成功",
+    DialogueStage.DECISION_PENDING:   "同意核保",
+    DialogueStage.DECISION_FOLLOW_UP: "需要跟进",
+    DialogueStage.DECISION_REJECT:    "客户拒绝",
+    DialogueStage.DECISION_ABANDON:   "放弃投保",
 }
 
 

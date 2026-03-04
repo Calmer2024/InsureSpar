@@ -25,7 +25,7 @@ defineEmits<{
       </div>
       <div class="flex flex-col">
         <div class="flex items-center gap-2">
-          <span class="text-lg font-bold text-[var(--color-text-primary)] tracking-tight leading-none">InsureSpar</span>
+          <span class="text-lg font-bold text-[var(--color-text-primary)] tracking-tight leading-none" style="font-family: 'Felix Titling', serif;">InsureSpar</span>
           <span class="px-1.5 py-0.5 rounded-md bg-[var(--color-surface-muted)] text-[9px] font-bold text-[var(--color-text-secondary)] tracking-widest uppercase">
             Beta
           </span>

@@ -120,11 +120,11 @@ function timeAgo(iso: string | null): string {
     <Transition name="drawer">
       <div
         v-if="visible"
-        class="fixed inset-0 z-50 flex justify-end"
+        class="fixed inset-0 z-50 flex justify-end pointer-events-none"
       >
-        <div class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" @click="$emit('close')" />
+        <div class="absolute inset-0 bg-transparent transition-opacity pointer-events-auto" @click="$emit('close')" />
 
-        <div class="relative w-[420px] max-w-[85vw] h-full bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.05)] flex flex-col z-10">
+        <div class="relative w-[420px] max-w-[85vw] h-full bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.05)] flex flex-col z-10 pointer-events-auto">
           
           <div class="px-6 py-5 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-white">
             <h2 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">历史记录</h2>
@@ -166,7 +166,6 @@ function timeAgo(iso: string | null): string {
                 ]"
                 @click="viewSession(s)"
               >
-                <!-- 当前会话大头贴标识 -->
                 <div v-if="s.session_id === currentSessionId" class="absolute top-0 right-0 bg-[#4ADE80] text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg tracking-wider shadow-sm z-10">
                   CURRENT
                 </div>
@@ -219,10 +218,25 @@ function timeAgo(iso: string | null): string {
 </template>
 
 <style scoped>
+/* 外层容器控制整体的挂载淡入/淡出 */
 .drawer-enter-active,
-.drawer-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.drawer-leave-active { 
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+}
+
+/* 内部抽屉面板控制平滑位移 */
+.drawer-enter-active .relative,
+.drawer-leave-active .relative {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 初始和离开状态：外层透明，内层在右侧屏幕外 */
 .drawer-enter-from,
-.drawer-leave-to { opacity: 0; }
+.drawer-leave-to { 
+  opacity: 0; 
+}
 .drawer-enter-from .relative,
-.drawer-leave-to .relative { transform: translateX(100%); }
+.drawer-leave-to .relative { 
+  transform: translateX(100%); 
+}
 </style>
