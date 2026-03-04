@@ -434,9 +434,13 @@ function viewHistorySession(data: {
     startEvalPolling()
   }
 
-  activePersona.value = personas.value.find(p => p.name === data.info.persona_id || p.persona_id === data.info.persona_id) || null
+  const p = personas.value.find(p => p.name === data.info.persona_id || p.persona_id === data.info.persona_id)
+  activePersona.value = p || null
 
-  chatTitle.value = `${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
+  const pName = p ? p.name : data.info.persona_id
+  const sName = strategies.value.find(s => s.strategy_id === data.info.strategy_id)?.name || data.info.strategy_id
+
+  chatTitle.value = `${pName}${sName ? ' × ' + sName : ''}`
   chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
 }
 
@@ -532,6 +536,8 @@ function buildStageText(ev: SSEEvent): string {
     <HistoryDrawer
       :visible="showHistory"
       :current-session-id="sessionId"
+      :personas="personas"
+      :strategies="strategies"
       @close="showHistory = false"
       @view-session="viewHistorySession"
     />

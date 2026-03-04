@@ -272,6 +272,7 @@ async def list_personas():
         {
             "persona_id": p["persona_id"],
             "name": p["name"],
+            "tags": p.get("tags", []),
             "difficulty": p["difficulty"],
             "description": p["description"],
             "demographics": p.get("demographics", ""),

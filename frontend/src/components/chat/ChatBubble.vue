@@ -41,6 +41,7 @@ const displayContent = computed(() => {
     </div>
 
     <div class="flex-1 min-w-0 max-w-[85%] flex flex-col items-end">
+      <div class="text-[12px] font-medium text-gray-400 mb-1.5 mr-1">保险代理人</div>
       <div class="rounded-[20px] rounded-tr-sm p-5 text-[14px] leading-[1.7] shadow-sm transition-all duration-300 bg-[#F0F7F4] text-gray-800 text-left">
         <span v-if="message.content">{{ message.content }}</span>
         
@@ -74,6 +75,7 @@ const displayContent = computed(() => {
     </div>
 
     <div class="flex-1 min-w-0 max-w-[85%] flex flex-col items-start">
+      <div class="text-[12px] font-medium text-gray-400 mb-1.5 ml-1">{{ activePersona?.name || '客户' }}</div>
       <div class="rounded-[20px] rounded-tl-sm p-5 text-[14px] leading-[1.7] bg-gray-50 text-gray-800 transition-all duration-300">
         {{ message.content }}
         <span v-if="message.isStreaming && !message.content" class="inline-flex gap-1.5 py-1 align-middle">
