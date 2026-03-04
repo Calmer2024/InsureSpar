@@ -40,7 +40,7 @@ async function searchRules() {
   try {
     result.value = await toolSearchRules(rulesQuery.value.trim())
   } catch (e: any) {
-    result.value = `❌ 查询失败: ${e.message}`
+    result.value = `[错误] 查询失败: ${e.message}`
   } finally {
     loading.value = false
   }
@@ -52,7 +52,7 @@ async function calcPremium() {
   try {
     result.value = await toolPremiumRate(premAge.value, premGender.value, premPayPeriod.value, premAmount.value)
   } catch (e: any) {
-    result.value = `❌ 查询失败: ${e.message}`
+    result.value = `[错误] 查询失败: ${e.message}`
   } finally {
     loading.value = false
   }
@@ -64,7 +64,7 @@ async function calcCashValue() {
   try {
     result.value = await toolCashValue(cvGender.value, cvAge.value, cvPayPeriod.value, cvYear.value, cvAmount.value)
   } catch (e: any) {
-    result.value = `❌ 查询失败: ${e.message}`
+    result.value = `[错误] 查询失败: ${e.message}`
   } finally {
     loading.value = false
   }
@@ -102,9 +102,13 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
           </button>
         </div>
         <button
-          class="w-7 h-7 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-zinc-900 hover:bg-[var(--color-surface)] transition-colors text-sm"
+          class="w-7 h-7 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-zinc-900 hover:bg-[var(--color-surface)] transition-colors"
           @click="$emit('close')"
-        >✕</button>
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       <div class="flex min-h-0" style="max-height: 365px">

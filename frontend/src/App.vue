@@ -423,7 +423,7 @@ function viewHistorySession(data: {
 
   appStatus.value = 'finished'
   statusText.value = '历史回放（只读）'
-  chatTitle.value = `📚 ${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
+  chatTitle.value = `${data.info.persona_id}${data.info.strategy_id ? ' × ' + data.info.strategy_id : ''}`
   chatSubtitle.value = `历史记录 · ${data.info.turn_count} 轮 · ${data.info.final_stage || '未结束'}`
 }
 

@@ -75,10 +75,13 @@ const radarOption = computed(() => {
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-lg font-bold text-[var(--color-text-primary)] tracking-tight">终极评估报告</h2>
             <button
-              class="px-3 py-1.5 rounded-md border border-[var(--color-border)] bg-white text-xs font-medium text-[var(--color-text-secondary)] hover:text-zinc-900 hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[var(--color-border)] bg-white text-xs font-medium text-[var(--color-text-secondary)] hover:text-zinc-900 hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all"
               @click="$emit('close')"
             >
-              ✕ 关闭
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              关闭
             </button>
           </div>
 

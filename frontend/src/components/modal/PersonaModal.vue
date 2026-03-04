@@ -22,8 +22,10 @@ function difficultyColor(d: string): string {
   return 'bg-emerald-50 text-emerald-600 border border-emerald-100'
 }
 
-function avatar(d: string): string {
-  return d === 'hard' ? '👔' : d === 'medium' ? '💻' : '👩'
+function avatarSvg(d: string): string {
+  if (d === 'hard') return 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' // briefcase/cube
+  if (d === 'medium') return 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' // monitor
+  return 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' // user
 }
 </script>
 
@@ -50,7 +52,11 @@ function avatar(d: string): string {
               class="w-full flex items-center gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-white hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all duration-200 group text-left shadow-sm"
               @click="$emit('select', p.persona_id)"
             >
-              <span class="text-3xl group-hover:scale-110 transition-transform">{{ avatar(p.difficulty) }}</span>
+              <div class="w-10 h-10 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border-light)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <svg class="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="avatarSvg(p.difficulty)" />
+                </svg>
+              </div>
               <div class="flex-1 min-w-0">
                 <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">{{ p.name }}</h3>
                 <p class="text-xs text-[var(--color-text-secondary)] mt-0.5 line-clamp-2 leading-relaxed">{{ p.description }}</p>
