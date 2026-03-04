@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AppStatus } from '../../types'
 import StatusDot from '../common/StatusDot.vue'
+import RichText from '../common/RichText.vue'
 
 defineProps<{
   status: AppStatus
@@ -38,7 +39,7 @@ defineEmits<{
       
       <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[var(--color-border)] shadow-sm transition-all duration-300">
         <StatusDot :status="status" />
-        <span class="text-[var(--color-text-primary)] font-medium truncate max-w-[160px]">{{ statusText }}</span>
+        <RichText :text="statusText" class="text-[var(--color-text-primary)] font-medium truncate max-w-[160px]" />
       </div>
 
       <div v-if="turnCount > 0" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border-light)] text-[var(--color-text-secondary)] font-medium animate-fade-in">
@@ -47,7 +48,7 @@ defineEmits<{
       </div>
 
       <div v-if="sessionId" class="flex items-center px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border-light)] text-[var(--color-text-secondary)] font-medium truncate max-w-[140px] animate-fade-in">
-        {{ stageLabel }}
+        <RichText :text="stageLabel" />
       </div>
 
       <div v-if="sessionId" class="font-mono text-[10px] text-[var(--color-text-muted)] opacity-50 hover:opacity-100 transition-opacity cursor-default animate-fade-in ml-2">
