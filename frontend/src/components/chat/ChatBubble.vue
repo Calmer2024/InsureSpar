@@ -64,7 +64,7 @@ const displayContent = computed(() => {
     <div
       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] leading-snug max-w-[85%] cursor-default border"
       :class="{
-        'bg-emerald-100 text-zinc-900 border-white shadow-sm': message.logType === 'stage_update',
+        'bg-[#E9F7EF] text-zinc-900 border-white shadow-sm': message.logType === 'stage_update',
         'bg-red-50 text-red-600 border-red-100': message.logType === 'force_guard',
         'bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)] border-transparent': !message.logType || message.logType === 'phase' || message.logType === 'status',
         'bg-white text-[var(--color-text-secondary)] border-[var(--color-border)] shadow-sm': isToolMsg,
