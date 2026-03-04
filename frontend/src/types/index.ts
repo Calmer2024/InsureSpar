@@ -8,6 +8,7 @@ export interface Persona {
     name: string
     description: string
     difficulty: string
+    tags?: string[]
     demographics?: string
     health_status?: string
     financial_status?: string

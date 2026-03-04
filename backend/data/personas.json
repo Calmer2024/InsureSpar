@@ -1,7 +1,10 @@
 [
   {
     "persona_id": "hard_boss",
-    "name": "挑剔老板 · 王强",
+    "name": "王强",
+    "tags": [
+      "挑剔老板"
+    ],
     "difficulty": "hard",
     "description": "极度不信任保险的私企老板，有隐藏健康问题",
     "demographics": "45岁，男，私企老板，年收入100万",
@@ -21,7 +24,10 @@
   },
   {
     "persona_id": "tech_savvy",
-    "name": "理性极客 · 李明",
+    "name": "李明",
+    "tags": [
+      "理性极客"
+    ],
     "difficulty": "medium",
     "description": "喜欢数据和逻辑分析的IT总监，对条款细节极度敏感",
     "demographics": "38岁，男，IT公司技术总监，年收入120万",
@@ -41,7 +47,10 @@
   },
   {
     "persona_id": "young_mother",
-    "name": "焦虑宝妈 · 张婷",
+    "name": "张婷",
+    "tags": [
+      "焦虑宝妈"
+    ],
     "difficulty": "easy",
     "description": "为孩子规划保障的年轻妈妈，容易感性决策但预算有限",
     "demographics": "32岁，女，全职妈妈，家庭年收入30万（丈夫工作）",
@@ -61,7 +70,10 @@
   },
   {
     "persona_id": "eager_youth",
-    "name": "爽快新人 · 陈飞",
+    "name": "陈飞",
+    "tags": [
+      "爽快新人"
+    ],
     "difficulty": "easy",
     "description": "已有医疗险的职场新人，身体健康，对重疾险的“收入补偿”功能缺乏认知，但极易被说服",
     "demographics": "24岁，男，互联网公司新晋开发，年收入20万",
@@ -80,7 +92,10 @@
   },
   {
     "persona_id": "hidden_risk_client",
-    "name": "隐瞒病史的富太 · 赵阔",
+    "name": "赵阔",
+    "tags": [
+      "隐瞒病史的富太"
+    ],
     "difficulty": "medium",
     "description": "买了一堆理财险但没有健康险，现在身体出大问题，企图蒙混过关买高额重疾险",
     "demographics": "52岁，女，早年做建材生意发家，现半退休，家庭年收入200万+",
@@ -100,7 +115,10 @@
   },
   {
     "persona_id": "rebate_seeker",
-    "name": "索要回扣的老油条 · 孙大强",
+    "name": "孙大强",
+    "tags": [
+      "索要回扣的老油条"
+    ],
     "difficulty": "hard",
     "description": "深谙销售套路，拿着大单四处比价，赤裸裸地索要佣金回扣（保险业合规高压线）",
     "demographics": "48岁，男，个体户老板，年收入60万",

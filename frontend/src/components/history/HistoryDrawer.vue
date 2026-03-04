@@ -2,12 +2,38 @@
 import { ref, watch } from 'vue'
 import type { HistorySession } from '../../services/api'
 import { fetchHistorySessions, fetchHistoryDetail } from '../../services/api'
-import type { ChatMessage, Evaluation, FinalReport } from '../../types'
+import type { ChatMessage, Evaluation, FinalReport, Persona, Strategy } from '../../types'
 
 const props = defineProps<{
   visible: boolean
   currentSessionId?: string | null
+  personas: Persona[]
+  strategies: Strategy[]
 }>()
+
+const STAGE_LABELS: Record<string, string> = {
+  'INTRODUCTION': '破冰介绍',
+  'OBJECTION': '异议处理',
+  'DECISION_SIGN': '签单成功',
+  'DECISION_PENDING': '同意核保',
+  'DECISION_FOLLOW_UP': '需要跟进',
+  'DECISION_REJECT': '客户拒绝',
+  'DECISION_ABANDON': '放弃投保'
+}
+
+function getPersona(id: string) {
+  return props.personas.find(p => p.persona_id === id)
+}
+
+function getStrategy(id: string | null) {
+  if (!id) return null
+  return props.strategies.find(s => s.strategy_id === id)
+}
+
+function getStageLabel(stage: string | null) {
+  if (!stage) return '未结束'
+  return STAGE_LABELS[stage] || stage
+}
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -181,18 +207,23 @@ function timeAgo(iso: string | null): string {
                       </svg>
                     </div>
                     <span class="text-xs font-medium" :class="s.is_finished ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)]'">
-                      {{ s.final_stage || '未结束' }}
+                      {{ getStageLabel(s.final_stage) }}
                     </span>
                   </div>
                   <span class="text-[10px] font-medium text-[var(--color-text-muted)]">{{ timeAgo(s.start_time) }}</span>
                 </div>
 
                 <div class="mb-3">
-                  <div class="text-sm font-semibold text-[var(--color-text-primary)] mb-1">
-                    {{ s.persona_id }}
+                  <div class="flex items-center gap-2 mb-1">
+                    <div class="text-sm font-semibold text-[var(--color-text-primary)]">
+                       {{ getPersona(s.persona_id)?.name || s.persona_id }}
+                    </div>
+                    <span v-for="tag in (getPersona(s.persona_id)?.tags || [])" :key="tag" class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600 font-medium">
+                      {{ tag }}
+                    </span>
                   </div>
                   <div v-if="s.strategy_id" class="text-xs text-[var(--color-text-secondary)] line-clamp-1">
-                    使用策略: {{ s.strategy_id }}
+                    使用策略: {{ getStrategy(s.strategy_id)?.name || s.strategy_id }}
                   </div>
                 </div>
 
