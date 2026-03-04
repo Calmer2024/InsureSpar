@@ -4,6 +4,7 @@ FastAPI 入口文件
 """
 import logging
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
 
 # 新版对练系统路由
@@ -48,6 +49,7 @@ app.include_router(chat_router)
 app.include_router(auto_router)
 app.include_router(history_router)
 app.include_router(tools_router)
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 
 
 # 调试前端
