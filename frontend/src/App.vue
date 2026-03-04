@@ -87,6 +87,7 @@ function resetSession() {
   turnCount.value = 0
   stageLabel.value = '等待启动'
   isFinished.value = false
+  isHistoryView.value = false
   isPendingShutdown.value = false
   isProcessing.value = false
   appStatus.value = 'idle'
