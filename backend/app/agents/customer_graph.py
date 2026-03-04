@@ -22,7 +22,8 @@ from app.core.config import (
     MIN_TURNS_BEFORE_DECISION, PERSONAS,
     DECISION_STRIKES_REQUIRED,
 )
-from app.tools.rag_tool import search_insurance_rules
+# 这里修改了知识库的名字
+from app.tools.rag_tool import search_insurance_knowledge
 from app.tools.calculators import query_premium_rate, query_cash_value
 
 
@@ -35,7 +36,7 @@ llm = ChatOpenAI(
     api_key=LLM_API_KEY,
 )
 
-tools = [search_insurance_rules, query_premium_rate, query_cash_value]
+tools = [search_insurance_knowledge, query_premium_rate, query_cash_value]
 llm_with_tools = llm.bind_tools(tools)
 
 

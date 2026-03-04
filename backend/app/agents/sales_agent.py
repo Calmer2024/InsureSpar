@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 
 from app.core.config import LLM_MODEL, LLM_BASE_URL, LLM_API_KEY, SALES_STRATEGIES, PERSONAS
 from app.agents.state import DialogueStage
-from app.tools.rag_tool import search_insurance_rules
+from app.tools.rag_tool import search_insurance_knowledge
 from app.tools.calculators import query_premium_rate, query_cash_value
 
 
@@ -20,12 +20,12 @@ sales_llm = ChatOpenAI(
     streaming=True,
 )
 
-TOOLS = [search_insurance_rules, query_premium_rate, query_cash_value]
+TOOLS = [search_insurance_knowledge, query_premium_rate, query_cash_value]
 sales_llm_with_tools = sales_llm.bind_tools(TOOLS)
 
 # 工具名 → 可调用函数 的映射（供手动执行工具）
 TOOL_EXECUTOR = {
-    "search_insurance_rules": search_insurance_rules,
+    "search_insurance_knowledge": search_insurance_knowledge,
     "query_premium_rate": query_premium_rate,
     "query_cash_value": query_cash_value,
 }
@@ -92,7 +92,7 @@ async def sales_agent_step(
 【工具使用强制规范】
 - 报任何保费数字前：必须先调用 query_premium_rate 工具查实际费率
 - 提到现金价值或退保金额前：必须先调用 query_cash_value 查询
-- 引用任何保险条款/核保规则前：必须先调用 search_insurance_rules 验证
+- 引用任何保险条款/核保规则前：必须先调用 search_insurance_knowledge 验证
 
 直接输出你要对客户说的话，不要有任何内心OS或前缀说明，不要使用任何MD格式标记。"""
 

@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.tools.rag_tool import search_insurance_rules
+from app.tools.rag_tool import search_insurance_knowledge
 from app.tools.calculators import query_premium_rate, query_cash_value
 
 router = APIRouter(prefix="/api/tools", tags=["🧰 用户工具箱"])
@@ -34,7 +34,7 @@ class CashValueRequest(BaseModel):
 # ==========================================
 @router.post("/search-rules", summary="条款规则检索", description="使用 RAG 混合检索查询保险条款和规则")
 async def api_search_rules(req: SearchRulesRequest):
-    result = search_insurance_rules.invoke({"query": req.query})
+    result = search_insurance_knowledge.invoke({"query": req.query})
     return {"result": result}
 
 

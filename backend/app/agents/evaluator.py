@@ -8,7 +8,7 @@ from app.core.config import LLM_MODEL, LLM_BASE_URL, LLM_API_KEY, PERSONAS
 from app.services.session_manager import session_manager
 
 # 导入工具函数（直接调用底层函数，不经过 LangChain 的 @tool 包装）
-from app.tools.rag_tool import search_insurance_rules
+from app.tools.rag_tool import search_insurance_knowledge
 from app.tools.calculators import query_premium_rate, query_cash_value
 
 
@@ -217,7 +217,7 @@ async def _verify_facts(claims: FactClaimsExtraction) -> str:
     if claims.has_rule_claim and claims.rule_query:
         print(f"🔧 [考官取证] 正在核查规则声明: '{claims.rule_query}'")
         try:
-            actual_rules = search_insurance_rules.invoke({"query": claims.rule_query})
+            actual_rules = search_insurance_knowledge.invoke({"query": claims.rule_query})
             evidence_parts.append(
                 f"📊 【规则条款核查】\n"
                 f"  销售说法涉及：{claims.rule_query}\n"
