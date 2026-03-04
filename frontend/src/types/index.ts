@@ -8,6 +8,13 @@ export interface Persona {
     name: string
     description: string
     difficulty: string
+    demographics?: string
+    health_status?: string
+    financial_status?: string
+    insurance_awareness?: string
+    risk_preference?: string
+    core_focus?: string
+    communication_style?: string
 }
 
 /** 销售策略 */

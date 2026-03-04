@@ -274,6 +274,12 @@ async def list_personas():
             "name": p["name"],
             "difficulty": p["difficulty"],
             "description": p["description"],
+            "demographics": p.get("demographics", ""),
+            "health_status": p.get("health_status", ""),
+            "financial_status": p.get("financial_status", ""),
+            "insurance_awareness": p.get("insurance_awareness", ""),
+            "risk_preference": p.get("risk_preference", ""),
+            "core_focus": p.get("core_focus", ""),
         }
         for p in PERSONAS.values()
     ]
