@@ -77,8 +77,8 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
   <Transition name="toolbox">
     <div
       v-if="visible"
-      class="absolute bottom-full left-0 w-full bg-white border-t border-[var(--color-border)] shadow-[0_-12px_40px_rgba(0,0,0,0.08)] rounded-t-2xl z-20 overflow-hidden flex flex-col"
-      style="max-height: 420px"
+      class="absolute bottom-[calc(100%+16px)] left-0 w-full bg-white border border-[var(--color-border)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] rounded-2xl z-20 overflow-hidden flex flex-col"
+      style="max-height: 520px"
     >
       <div class="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-white shrink-0">
         <div class="flex items-center gap-1 p-1 bg-[var(--color-surface-muted)] rounded-lg">
@@ -111,7 +111,7 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
         </button>
       </div>
 
-      <div class="flex min-h-0" style="max-height: 365px">
+      <div class="flex min-h-0" style="max-height: 460px">
         <div class="w-[300px] shrink-0 p-5 border-r border-[var(--color-border-light)] overflow-y-auto bg-[var(--color-surface-hover)]">
           
           <div v-if="activeTab === 'rules'" class="space-y-4 animate-fade-in">
@@ -121,7 +121,7 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
                 v-model="rulesQuery"
                 type="text"
                 placeholder="如：高血压能投保吗"
-                class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10"
+                class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30"
                 @keypress.enter="searchRules"
               />
             </div>
@@ -130,7 +130,7 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
               class="cta-btn w-full py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
               @click="searchRules"
             >
-              <div v-if="loading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+              <div v-if="loading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
               {{ loading ? '查询中...' : '检索条款' }}
             </button>
           </div>
@@ -138,7 +138,7 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
           <div v-else-if="activeTab === 'premium'" class="space-y-3.5 animate-fade-in">
             <div>
               <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">投保年龄</label>
-              <input v-model.number="premAge" type="number" min="0" max="70" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10" />
+              <input v-model.number="premAge" type="number" min="0" max="70" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">被保人性别</label>
@@ -153,20 +153,20 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
             </div>
             <div>
               <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">交费期</label>
-              <select v-model.number="premPayPeriod" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%208l5%205%205-5%22%20stroke%3D%22%23A1A1AA%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat pr-8">
+              <select v-model.number="premPayPeriod" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%208l5%205%205-5%22%20stroke%3D%22%23A1A1AA%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat pr-8">
                 <option v-for="p in PAY_PERIODS" :key="p" :value="p">{{ p === 1 ? '趸交' : `${p}年交` }}</option>
               </select>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">保额（元）</label>
-              <input v-model.number="premAmount" type="number" :step="100000" min="100000" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10" />
+              <input v-model.number="premAmount" type="number" :step="100000" min="100000" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
             </div>
             <button
               :disabled="loading"
               class="cta-btn w-full py-2.5 mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
               @click="calcPremium"
             >
-              <div v-if="loading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+              <div v-if="loading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
               {{ loading ? '计算中...' : '计算保费' }}
             </button>
           </div>
@@ -186,31 +186,31 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">年龄</label>
-                <input v-model.number="cvAge" type="number" min="0" max="70" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10" />
+                <input v-model.number="cvAge" type="number" min="0" max="70" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">交费期</label>
-                <select v-model.number="cvPayPeriod" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%208l5%205%205-5%22%20stroke%3D%22%23A1A1AA%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat pr-6">
+                <select v-model.number="cvPayPeriod" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%208l5%205%205-5%22%20stroke%3D%22%23A1A1AA%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat pr-6">
                   <option v-for="p in PAY_PERIODS" :key="p" :value="p">{{ p === 1 ? '趸交' : `${p}年交` }}</option>
                 </select>
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">保单年度</label>
-                <input v-model.number="cvYear" type="number" min="1" max="75" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10" />
+                <input v-model.number="cvYear" type="number" min="1" max="75" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
               </div>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">保额（元）</label>
-              <input v-model.number="cvAmount" type="number" :step="100000" min="100000" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10" />
+              <input v-model.number="cvAmount" type="number" :step="100000" min="100000" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
             </div>
             <button
               :disabled="loading"
               class="cta-btn w-full py-2.5 mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
               @click="calcCashValue"
             >
-              <div v-if="loading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+              <div v-if="loading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
               {{ loading ? '计算中...' : '计算现金价值' }}
             </button>
           </div>
@@ -218,7 +218,7 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
 
         <div class="flex-1 p-6 overflow-y-auto bg-white">
           <div v-if="loading" class="flex flex-col items-center justify-center h-full">
-            <div class="w-8 h-8 border-2 border-[var(--color-border-light)] border-t-zinc-900 rounded-full animate-spin mb-3" />
+            <div class="w-8 h-8 border-2 border-[var(--color-border-light)] border-t-[var(--color-text-primary)] rounded-full animate-spin mb-3" />
             <span class="text-xs text-[var(--color-text-secondary)] font-medium">系统正在处理，请稍候...</span>
           </div>
           
@@ -252,6 +252,7 @@ const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
 .toolbox-enter-from,
 .toolbox-leave-to {
   opacity: 0;
-  transform: translateY(20px) scale(0.98);
+  /* 优化3: 退场动画同步拉开距离 */
+  transform: translateY(20px) scale(0.98); 
 }
 </style>
