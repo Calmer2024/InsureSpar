@@ -23,6 +23,24 @@ function handleSend(emit: (e: 'send', msg: string) => void) {
   if (!msg) return
   emit('send', msg)
   inputText.value = ''
+  if (textareaRef.value) {
+    textareaRef.value.style.height = 'auto'
+  }
+}
+
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+
+function autoResize(e: Event) {
+  const target = e.target as HTMLTextAreaElement
+  target.style.height = 'auto'
+  target.style.height = target.scrollHeight + 'px'
+}
+
+function handleKeydown(e: KeyboardEvent, emit: (e: 'send', msg: string) => void) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleSend(emit)
+  }
 }
 </script>
 
@@ -57,15 +75,16 @@ function handleSend(emit: (e: 'send', msg: string) => void) {
 
     <div class="flex-1 bg-white/80 backdrop-blur-2xl border border-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] rounded-[24px] p-2.5 flex flex-col transition-all focus-within:bg-white focus-within:shadow-[0_12px_50px_rgba(0,0,0,0.08)] animate-fade-in-up">
       
-      <input
+      <textarea
+        ref="textareaRef"
         v-model="inputText"
-        type="text"
-        :placeholder="placeholder || '输入你的销售话术...'"
+        :placeholder="placeholder || '输入你的销售话术... (Shift+Enter 换行)'"
         :disabled="disabled"
-        class="w-full bg-transparent px-4 py-3 text-[14px] text-gray-800 placeholder-gray-400 outline-none disabled:opacity-50"
-        @keypress.enter="handleSend($emit)"
-        @focus="showToolbox = false"
-      />
+        rows="1"
+        class="w-full bg-transparent px-4 py-3 text-[14px] text-gray-800 placeholder-gray-400 outline-none disabled:opacity-50 resize-none overflow-y-auto min-h-[44px] max-h-[150px]"
+        @input="autoResize"
+        @keydown="handleKeydown($event, $emit)"
+      ></textarea>
 
       <div class="flex items-center justify-between mt-2 px-1">
         <div class="flex items-center gap-2">
