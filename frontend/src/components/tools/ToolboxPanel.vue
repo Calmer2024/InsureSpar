@@ -14,8 +14,13 @@ defineEmits<{
 const activeTab = ref<'rules' | 'premium' | 'cashValue'>('rules')
 
 // ── 通用状态 ──
-const loading = ref(false)
-const result = ref('')
+const rulesLoading = ref(false)
+const premiumLoading = ref(false)
+const cvLoading = ref(false)
+
+const rulesResult = ref('')
+const premiumResult = ref('')
+const cvResult = ref('')
 
 // ── 条款查询 ──
 const rulesQuery = ref('')
@@ -35,38 +40,38 @@ const cvAmount = ref(500000)
 
 async function searchRules() {
   if (!rulesQuery.value.trim()) return
-  loading.value = true
-  result.value = ''
+  rulesLoading.value = true
+  rulesResult.value = ''
   try {
-    result.value = await toolSearchRules(rulesQuery.value.trim())
+    rulesResult.value = await toolSearchRules(rulesQuery.value.trim())
   } catch (e: any) {
-    result.value = `[错误] 查询失败: ${e.message}`
+    rulesResult.value = `[错误] 查询失败: ${e.message}`
   } finally {
-    loading.value = false
+    rulesLoading.value = false
   }
 }
 
 async function calcPremium() {
-  loading.value = true
-  result.value = ''
+  premiumLoading.value = true
+  premiumResult.value = ''
   try {
-    result.value = await toolPremiumRate(premAge.value, premGender.value, premPayPeriod.value, premAmount.value)
+    premiumResult.value = await toolPremiumRate(premAge.value, premGender.value, premPayPeriod.value, premAmount.value)
   } catch (e: any) {
-    result.value = `[错误] 查询失败: ${e.message}`
+    premiumResult.value = `[错误] 查询失败: ${e.message}`
   } finally {
-    loading.value = false
+    premiumLoading.value = false
   }
 }
 
 async function calcCashValue() {
-  loading.value = true
-  result.value = ''
+  cvLoading.value = true
+  cvResult.value = ''
   try {
-    result.value = await toolCashValue(cvGender.value, cvAge.value, cvPayPeriod.value, cvYear.value, cvAmount.value)
+    cvResult.value = await toolCashValue(cvGender.value, cvAge.value, cvPayPeriod.value, cvYear.value, cvAmount.value)
   } catch (e: any) {
-    result.value = `[错误] 查询失败: ${e.message}`
+    cvResult.value = `[错误] 查询失败: ${e.message}`
   } finally {
-    loading.value = false
+    cvLoading.value = false
   }
 }
 
@@ -113,16 +118,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Transition name="toolbox">
-    <div
-      v-show="visible"
-      class="fixed w-[700px] bg-white border border-[var(--color-border)] shadow-2xl rounded-2xl z-50 overflow-hidden flex flex-col"
-      :style="{ left: position.x + 'px', top: position.y + 'px', height: '520px' }"
-    >
-      <div 
-        class="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-gray-50 shrink-0 cursor-move select-none"
-        @mousedown="startDrag"
+  <Teleport to="body">
+    <Transition name="toolbox">
+      <div
+        v-show="visible"
+        class="fixed w-[660px] bg-white border border-[var(--color-border)] shadow-2xl rounded-2xl z-[9999] overflow-hidden flex flex-col"
+        :style="{ left: position.x + 'px', top: position.y + 'px', height: '480px' }"
       >
+        <div 
+          class="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-gray-50 shrink-0 cursor-move select-none"
+          @mousedown="startDrag"
+        >
         <div class="flex items-center gap-1 p-1 bg-[var(--color-surface-muted)] rounded-lg">
           <button
             v-for="tab in [
@@ -135,7 +141,7 @@ onUnmounted(() => {
             :class="activeTab === tab.key
               ? 'bg-white text-[var(--color-text-primary)] shadow-sm'
               : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'"
-            @click="activeTab = tab.key; result = ''"
+            @click="activeTab = tab.key"
           >
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="tab.svg" />
@@ -153,10 +159,10 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div class="flex min-h-0" style="max-height: 460px">
-        <div class="w-[300px] shrink-0 p-5 border-r border-[var(--color-border-light)] overflow-y-auto bg-[var(--color-surface-hover)]">
+      <div class="flex min-h-0 h-[430px]">
+        <div class="w-[270px] shrink-0 p-4 border-r border-[var(--color-border-light)] overflow-y-auto bg-[var(--color-surface-hover)]">
           
-          <div v-if="activeTab === 'rules'" class="space-y-4 animate-fade-in">
+          <div v-show="activeTab === 'rules'" class="space-y-4 animate-fade-in">
             <div>
               <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">查询关键词</label>
               <input
@@ -168,16 +174,16 @@ onUnmounted(() => {
               />
             </div>
             <button
-              :disabled="loading || !rulesQuery.trim()"
+              :disabled="rulesLoading || !rulesQuery.trim()"
               class="cta-btn w-full py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
               @click="searchRules"
             >
-              <div v-if="loading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
-              {{ loading ? '查询中...' : '检索条款' }}
+              <div v-if="rulesLoading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
+              {{ rulesLoading ? '查询中...' : '检索条款' }}
             </button>
           </div>
 
-          <div v-else-if="activeTab === 'premium'" class="space-y-3.5 animate-fade-in">
+          <div v-show="activeTab === 'premium'" class="space-y-3.5 animate-fade-in">
             <div>
               <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">投保年龄</label>
               <input v-model.number="premAge" type="number" min="0" max="70" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
@@ -204,23 +210,23 @@ onUnmounted(() => {
               <input v-model.number="premAmount" type="number" :step="100000" min="100000" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
             </div>
             <button
-              :disabled="loading"
+              :disabled="premiumLoading"
               class="cta-btn w-full py-2.5 mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
               @click="calcPremium"
             >
-              <div v-if="loading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
-              {{ loading ? '计算中...' : '计算保费' }}
+              <div v-if="premiumLoading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
+              {{ premiumLoading ? '计算中...' : '计算保费' }}
             </button>
           </div>
 
-          <div v-else class="space-y-3.5 animate-fade-in">
+          <div v-show="activeTab === 'cashValue'" class="space-y-3.5 animate-fade-in">
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">性别</label>
                 <div class="flex p-1 bg-[var(--color-surface-muted)] rounded-lg border border-[var(--color-border-light)]">
                   <button
                     v-for="g in ['男', '女']" :key="g"
-                    class="flex-1 py-1.5 rounded-md text-xs font-medium transition-all"
+                    class="flex-1 py-1 rounded-md text-xs font-medium transition-all"
                     :class="cvGender === g ? 'bg-white text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-secondary)]'"
                     @click="cvGender = g"
                   >{{ g }}</button>
@@ -228,19 +234,19 @@ onUnmounted(() => {
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">年龄</label>
-                <input v-model.number="cvAge" type="number" min="0" max="70" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
+                <input v-model.number="cvAge" type="number" min="0" max="70" class="w-full px-2 py-1.5 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">交费期</label>
-                <select v-model.number="cvPayPeriod" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%208l5%205%205-5%22%20stroke%3D%22%23A1A1AA%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat pr-6">
+                <select v-model.number="cvPayPeriod" class="w-full px-2 py-1.5 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%208l5%205%205-5%22%20stroke%3D%22%23A1A1AA%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat pr-6">
                   <option v-for="p in PAY_PERIODS" :key="p" :value="p">{{ p === 1 ? '趸交' : `${p}年交` }}</option>
                 </select>
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">保单年度</label>
-                <input v-model.number="cvYear" type="number" min="1" max="75" class="w-full px-2 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
+                <input v-model.number="cvYear" type="number" min="1" max="75" class="w-full px-2 py-1.5 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
               </div>
             </div>
             <div>
@@ -248,42 +254,87 @@ onUnmounted(() => {
               <input v-model.number="cvAmount" type="number" :step="100000" min="100000" class="w-full px-3 py-2 text-sm bg-white border border-[var(--color-border)] rounded-lg outline-none transition-all focus:border-[#BFE0A9] focus:ring-2 focus:ring-[#BFE0A9]/30" />
             </div>
             <button
-              :disabled="loading"
+              :disabled="cvLoading"
               class="cta-btn w-full py-2.5 mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
               @click="calcCashValue"
             >
-              <div v-if="loading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
-              {{ loading ? '计算中...' : '计算现金价值' }}
+              <div v-if="cvLoading" class="w-4 h-4 border-2 border-[var(--color-text-primary)]/20 border-t-[var(--color-text-primary)] rounded-full animate-spin mr-2" />
+              {{ cvLoading ? '计算中...' : '计算现金价值' }}
             </button>
           </div>
         </div>
 
-        <div class="flex-1 p-6 overflow-y-auto bg-white">
-          <div v-if="loading" class="flex flex-col items-center justify-center h-full">
-            <div class="w-8 h-8 border-2 border-[var(--color-border-light)] border-t-[var(--color-text-primary)] rounded-full animate-spin mb-3" />
-            <span class="text-xs text-[var(--color-text-secondary)] font-medium">系统正在处理，请稍候...</span>
-          </div>
-          
-          <div v-else-if="result" class="animate-fade-in h-full flex flex-col">
-            <h4 class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">输出结果</h4>
-            <div class="text-sm text-[var(--color-text-primary)] leading-relaxed whitespace-pre-wrap bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border-light)] flex-1 overflow-y-auto">
-              {{ result }}
-            </div>
-          </div>
-          
-          <div v-else class="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] animate-fade-in">
-            <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
-              <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-            </div>
-            <p class="text-sm font-medium text-[var(--color-text-primary)]">等待输入参数</p>
-            <span class="text-xs mt-1.5 text-center leading-relaxed">在左侧配置需要查询的工具信息<br/>结果将在此区域呈现</span>
+          <div class="flex-1 p-6 overflow-y-auto bg-white flex flex-col items-stretch">
+            <template v-if="activeTab === 'rules'">
+              <div v-if="rulesLoading" class="flex flex-col items-center justify-center h-full">
+                <div class="w-8 h-8 border-2 border-[var(--color-border-light)] border-t-[var(--color-text-primary)] rounded-full animate-spin mb-3" />
+                <span class="text-xs text-[var(--color-text-secondary)] font-medium">系统正在检索条款...</span>
+              </div>
+              <div v-else-if="rulesResult" class="animate-fade-in h-full flex flex-col">
+                <h4 class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">条款原文结果</h4>
+                <div class="text-sm text-[var(--color-text-primary)] leading-relaxed whitespace-pre-wrap bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border-light)] flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                  {{ rulesResult }}
+                </div>
+              </div>
+              <div v-else class="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] animate-fade-in">
+                <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
+                  <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <p class="text-sm font-medium text-[var(--color-text-primary)]">等待输入参数</p>
+                <span class="text-xs mt-1.5 text-center leading-relaxed">在左侧输入关键词，点击检索</span>
+              </div>
+            </template>
+
+            <template v-else-if="activeTab === 'premium'">
+              <div v-if="premiumLoading" class="flex flex-col items-center justify-center h-full">
+                <div class="w-8 h-8 border-2 border-[var(--color-border-light)] border-t-[var(--color-text-primary)] rounded-full animate-spin mb-3" />
+                <span class="text-xs text-[var(--color-text-secondary)] font-medium">系统正在计算保费...</span>
+              </div>
+              <div v-else-if="premiumResult" class="animate-fade-in h-full flex flex-col">
+                <h4 class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">保费计算结果</h4>
+                <div class="text-sm text-[var(--color-text-primary)] leading-relaxed whitespace-pre-wrap bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border-light)] flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                  {{ premiumResult }}
+                </div>
+              </div>
+              <div v-else class="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] animate-fade-in">
+                <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
+                  <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p class="text-sm font-medium text-[var(--color-text-primary)]">等待输入参数</p>
+                <span class="text-xs mt-1.5 text-center leading-relaxed">配置完参数后点击计算保费</span>
+              </div>
+            </template>
+
+            <template v-else-if="activeTab === 'cashValue'">
+              <div v-if="cvLoading" class="flex flex-col items-center justify-center h-full">
+                <div class="w-8 h-8 border-2 border-[var(--color-border-light)] border-t-[var(--color-text-primary)] rounded-full animate-spin mb-3" />
+                <span class="text-xs text-[var(--color-text-secondary)] font-medium">系统正在处理现金价值...</span>
+              </div>
+              <div v-else-if="cvResult" class="animate-fade-in h-full flex flex-col">
+                <h4 class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">现金价值查询结果</h4>
+                <div class="text-sm text-[var(--color-text-primary)] leading-relaxed whitespace-pre-wrap bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border-light)] flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                  {{ cvResult }}
+                </div>
+              </div>
+              <div v-else class="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] animate-fade-in">
+                <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
+                  <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <p class="text-sm font-medium text-[var(--color-text-primary)]">等待输入参数</p>
+                <span class="text-xs mt-1.5 text-center leading-relaxed">修改参数自动进行现金价值计算</span>
+              </div>
+            </template>
           </div>
         </div>
       </div>
-    </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
