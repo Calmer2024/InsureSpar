@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { toolSearchRules, toolPremiumRate, toolCashValue } from '../../services/api'
 
 defineProps<{
@@ -71,16 +71,58 @@ async function calcCashValue() {
 }
 
 const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
+
+const position = ref({ x: 200, y: 100 })
+const isDragging = ref(false)
+let dragOffset = { x: 0, y: 0 }
+
+function startDrag(e: MouseEvent) {
+  isDragging.value = true
+  dragOffset.x = e.clientX - position.value.x
+  dragOffset.y = e.clientY - position.value.y
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+function onDrag(e: MouseEvent) {
+  if (!isDragging.value) return
+  requestAnimationFrame(() => {
+    position.value.x = e.clientX - dragOffset.x
+    position.value.y = e.clientY - dragOffset.y
+  })
+}
+
+function stopDrag() {
+  isDragging.value = false
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    position.value = {
+      x: window.innerWidth / 2 - 350,
+      y: window.innerHeight / 2 - 260
+    }
+  }
+})
+
+onUnmounted(() => {
+  stopDrag()
+})
 </script>
 
 <template>
   <Transition name="toolbox">
     <div
-      v-if="visible"
-      class="absolute bottom-[calc(100%+16px)] left-0 w-full bg-white border border-[var(--color-border)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] rounded-2xl z-20 overflow-hidden flex flex-col"
-      style="max-height: 520px"
+      v-show="visible"
+      class="fixed w-[700px] bg-white border border-[var(--color-border)] shadow-2xl rounded-2xl z-50 overflow-hidden flex flex-col"
+      :style="{ left: position.x + 'px', top: position.y + 'px', height: '520px' }"
     >
-      <div class="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-white shrink-0">
+      <div 
+        class="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-gray-50 shrink-0 cursor-move select-none"
+        @mousedown="startDrag"
+      >
         <div class="flex items-center gap-1 p-1 bg-[var(--color-surface-muted)] rounded-lg">
           <button
             v-for="tab in [
