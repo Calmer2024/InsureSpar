@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChatMessage, Persona } from '../../types'
+import RichText from '../common/RichText.vue'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
@@ -29,7 +30,7 @@ const displayContent = computed(() => {
       }"
       @click="isTruncated && (expanded = !expanded)"
     >
-      <span class="truncate transition-all duration-200" :class="{'whitespace-normal': expanded}">{{ displayContent }}</span>
+      <RichText :text="displayContent" class="truncate transition-all duration-200" :class="{'whitespace-normal': expanded}" />
     </div>
   </div>
 
