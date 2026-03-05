@@ -2,6 +2,7 @@
 import type { AppStatus } from '../../types'
 import StatusDot from '../common/StatusDot.vue'
 import RichText from '../common/RichText.vue'
+import { Icon } from '@iconify/vue'
 
 defineProps<{
   status: AppStatus
@@ -9,11 +10,14 @@ defineProps<{
   turnCount: number
   stageLabel: string
   sessionId: string | null
+  showBackButton?: boolean
 }>()
 
 defineEmits<{
   (e: 'new-session'): void
   (e: 'show-history'): void
+  (e: 'show-dashboard'): void
+  (e: 'back'): void
 }>()
 </script>
 
@@ -57,6 +61,23 @@ defineEmits<{
     </div>
 
     <div class="flex items-center gap-3 shrink-0">
+      <button
+        v-if="showBackButton"
+        class="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-white text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all shadow-sm active:scale-[0.98]"
+        @click="$emit('back')"
+      >
+        <Icon icon="lucide:arrow-left" class="w-4 h-4 opacity-70" />
+        返回对练
+      </button>
+
+      <button
+        class="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-white text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all shadow-sm active:scale-[0.98]"
+        @click="$emit('show-dashboard')"
+      >
+        <Icon icon="lucide:user" class="w-4 h-4 opacity-70" />
+        个人中心
+      </button>
+
       <button
         class="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--color-border)] bg-white text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all shadow-sm active:scale-[0.98]"
         @click="$emit('show-history')"

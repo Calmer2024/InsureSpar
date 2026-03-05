@@ -17,8 +17,10 @@ import ChatPanel from './components/chat/ChatPanel.vue'
 import EvalPanel from './components/evaluation/EvalPanel.vue'
 import SessionSetupModal from './components/modal/SessionSetupModal.vue'
 import HistoryDrawer from './components/history/HistoryDrawer.vue'
+import DashboardView from './components/dashboard/DashboardView.vue'
 
 // ── 状态 ──
+const currentView = ref<'main' | 'dashboard'>('main')
 const appStatus = ref<AppStatus>('idle')
 const statusText = ref('等待启动')
 const turnCount = ref(0)
@@ -491,12 +493,15 @@ function buildStageText(ev: SSEEvent): string {
         :turn-count="turnCount"
         :stage-label="stageLabel"
         :session-id="sessionId"
+        :show-back-button="currentView === 'dashboard'"
         @new-session="handleNewSession"
         @show-history="showHistory = true"
+        @show-dashboard="currentView = 'dashboard'"
+        @back="currentView = 'main'"
       />
     </header>
 
-    <main class="flex flex-1 min-h-0 px-6 pb-6 gap-6 max-w-[1800px] mx-auto w-full">
+    <main v-if="currentView === 'main'" class="flex flex-1 min-h-0 px-6 pb-6 gap-6 max-w-[1800px] mx-auto w-full">
       
       <section class="flex-1 flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden transition-all duration-300">
         <ChatPanel
@@ -524,6 +529,10 @@ function buildStageText(ev: SSEEvent): string {
         />
       </aside>
     </main>
+
+    <DashboardView
+      v-else-if="currentView === 'dashboard'"
+    />
 
     <SessionSetupModal
       :visible="showSetupModal"

@@ -303,3 +303,59 @@ export async function toolCashValue(gender: string, age: number, payPeriod: numb
     const data = await res.json()
     return data.result
 }
+
+/* ========================================
+ * 个人中心 Dashboard
+ * ======================================== */
+
+export interface DashboardOverview {
+    user_info: { name: string; rank: string; avatar_url: string; join_date: string }
+    stats: { total_sessions: number; total_duration_minutes: number; deal_closed_count: number; avg_score_all_time: number }
+}
+
+export interface DashboardCapabilities {
+    radar: { labels: string[]; scores: number[] }
+    weaknesses: Array<{ dimension: string; frequency: number; advice: string }>
+    ai_general_review: string
+}
+
+export interface DashboardGrowth {
+    x_axis: string[]
+    series: Record<string, number[]>
+}
+
+export async function fetchDashboardOverview(): Promise<DashboardOverview> {
+    try {
+        const res = await fetch(`${BASE}/api/user/dashboard/overview`)
+        if (!res.ok) throw new Error(`${res.status}`)
+        const json = await res.json()
+        return json.data || json
+    } catch {
+        const { mockDashboardOverview } = await import('../mock/data')
+        return mockDashboardOverview
+    }
+}
+
+export async function fetchDashboardCapabilities(): Promise<DashboardCapabilities> {
+    try {
+        const res = await fetch(`${BASE}/api/user/dashboard/capabilities`)
+        if (!res.ok) throw new Error(`${res.status}`)
+        const json = await res.json()
+        return json.data || json
+    } catch {
+        const { mockDashboardCapabilities } = await import('../mock/data')
+        return mockDashboardCapabilities
+    }
+}
+
+export async function fetchDashboardGrowth(period = 'last_10_sessions'): Promise<DashboardGrowth> {
+    try {
+        const res = await fetch(`${BASE}/api/user/dashboard/growth-trend?period=${period}`)
+        if (!res.ok) throw new Error(`${res.status}`)
+        const json = await res.json()
+        return json.data || json
+    } catch {
+        const { mockDashboardGrowth } = await import('../mock/data')
+        return mockDashboardGrowth
+    }
+}

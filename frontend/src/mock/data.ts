@@ -245,3 +245,48 @@ export const mockFinalReport: FinalReport = {
         { turn: 8, professionalism: 8, compliance: 8, strategy: 8, advice: '约定跟进计划很好' },
     ],
 }
+
+/* ========================================
+ * Dashboard Mock 数据
+ * ======================================== */
+
+/** 个人概览 */
+export const mockDashboardOverview = {
+    user_info: {
+        name: '张明远',
+        rank: '高级销售代表',
+        avatar_url: '',
+        join_date: '2024-06-15',
+    },
+    stats: {
+        total_sessions: 42,
+        total_duration_minutes: 512,
+        deal_closed_count: 15,
+        avg_score_all_time: 7.8,
+    },
+}
+
+/** 能力雷达 & 弱点诊断 */
+export const mockDashboardCapabilities = {
+    radar: {
+        labels: ['专业深度', '合规红线', '破冰能力', '异议处理', '促单缔结', '同理心'],
+        scores: [8.2, 9.5, 7.0, 6.5, 7.5, 8.0],
+    },
+    weaknesses: [
+        { dimension: '异议处理', frequency: 12, advice: '在面对"保费太贵"时，过早进行降价妥协，缺乏价值塑造。建议多使用利益量化法。' },
+        { dimension: '破冰能力', frequency: 8, advice: '开场生硬，未充分了解客户家庭背景即推销产品。建议先聊家庭话题暖场。' },
+        { dimension: '促单缔结', frequency: 6, advice: '在客户释放购买信号时犹豫不决，错过最佳促单时机。建议学习试探性成交法。' },
+    ],
+    ai_general_review: '近期合规性表现优异，无违规情况。异议处理能力处于瓶颈期，建议专项练习「价格抗拒」和「信任危机」剧本。破冰环节有明显进步，继续保持对客户背景的主动探寻。',
+}
+
+/** 能力成长曲线 */
+export const mockDashboardGrowth = {
+    x_axis: ['02-25', '02-26', '02-27', '02-28', '03-01', '03-02', '03-03', '03-04'],
+    series: {
+        total: [6.2, 6.8, 6.5, 7.1, 7.5, 7.3, 8.0, 8.1],
+        professionalism: [7.0, 7.5, 7.5, 7.8, 8.0, 8.2, 8.5, 8.5],
+        compliance: [8.0, 8.5, 9.0, 9.0, 9.5, 9.5, 9.5, 9.8],
+        strategy: [5.0, 5.5, 5.0, 6.0, 6.5, 6.0, 7.0, 7.0],
+    },
+}
