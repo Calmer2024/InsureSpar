@@ -12,6 +12,7 @@ from app.api.chat import router as chat_router
 from app.api.auto import router as auto_router
 from app.api.history import router as history_router
 from app.api.tools import router as tools_router
+from app.api.dashboard import router as dashboard_router
 from app.models.database import engine, Base
 
 # 关闭 Uvicorn 的 ACCESS 访问日志（避免反复刷屏）
@@ -49,6 +50,7 @@ app.include_router(chat_router)
 app.include_router(auto_router)
 app.include_router(history_router)
 app.include_router(tools_router)
+app.include_router(dashboard_router)
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 
 
