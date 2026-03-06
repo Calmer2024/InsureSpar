@@ -26,7 +26,7 @@ const EMOJI_ICONS: Record<string, string> = {
     '✅': 'lucide:check-circle',
     '🧠': 'twemoji:brain',
     '👤': 'glyphs-poly:user',
-    '🚦': 'streamline-plump:traffic-light-solid',
+    '🚦': 'fxemoji:lightbulb',
     '📋': 'lucide:clipboard-list',
 }
 
