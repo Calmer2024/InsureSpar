@@ -35,7 +35,7 @@ def get_overview(db: Session) -> dict:
     # 成交次数：final_stage 包含 "成交" 或 "签单"
     deal_closed_count = (
         db.query(func.count(SessionRecord.session_id))
-        .filter(SessionRecord.final_stage.like("%成交%"))
+        .filter(SessionRecord.final_stage.like("%DECISION_SIGN%"))
         .scalar()
     ) or 0
 
