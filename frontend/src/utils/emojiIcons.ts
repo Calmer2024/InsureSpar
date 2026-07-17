@@ -18,16 +18,16 @@ export type Segment = TextSegment | IconSegment
 
 // 将 Emoji 映射到具体的 Iconify 图标 (格式为 "图标集:图标名")
 const EMOJI_ICONS: Record<string, string> = {
-    '🤖': 'mdi:robot-outline',          // Material Design Icons
-    '📍': 'lucide:map-pin',             // Lucide Icons
-    '💬': 'lucide:message-circle',
-    '⚡': 'catppuccin:zap',
-    '🔍': 'lucide:search',
-    '✅': 'lucide:check-circle',
-    '🧠': 'twemoji:brain',
-    '👤': 'glyphs-poly:user',
-    '🚦': 'fxemoji:lightbulb',
-    '📋': 'lucide:clipboard-list',
+    '🤖': 'lucide:bot',
+    '📍': 'lucide:map-pin',
+    '💬': 'lucide:messages-square',
+    '⚡': 'lucide:activity',
+    '🔍': 'lucide:search-check',
+    '✅': 'lucide:circle-check',
+    '🧠': 'lucide:brain',
+    '👤': 'lucide:user-round',
+    '🚦': 'lucide:route',
+    '📋': 'lucide:clipboard-check',
 }
 
 // 动态生成正则表达式以匹配映射表中的 Emoji

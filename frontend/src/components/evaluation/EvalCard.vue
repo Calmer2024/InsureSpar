@@ -2,6 +2,7 @@
 import type { Evaluation } from '../../types'
 import ScoreBar from '../common/ScoreBar.vue'
 import { ref } from 'vue'
+import { Icon } from '@iconify/vue'
 
 defineProps<{
   evaluation: Evaluation
@@ -43,9 +44,7 @@ const expanded = ref(false)
       @click="expanded = !expanded"
     >
       {{ expanded ? '收起明细' : '查看维度明细' }}
-      <svg class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': expanded }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-      </svg>
+      <Icon icon="lucide:chevron-down" class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': expanded }" />
     </button>
 
     <div v-if="expanded" class="mt-2 space-y-3 px-1 text-xs text-[var(--color-text-secondary)] leading-relaxed animate-fade-in">

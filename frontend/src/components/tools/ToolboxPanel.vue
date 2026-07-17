@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { Icon } from '@iconify/vue'
 import { toolSearchRules, toolPremiumRate, toolCashValue } from '../../services/api'
 
 defineProps<{
@@ -78,6 +79,7 @@ async function calcCashValue() {
 const PAY_PERIODS = [1, 3, 5, 10, 15, 20, 25, 30]
 
 const position = ref({ x: 200, y: 100 })
+const panelRef = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 let dragOffset = { x: 0, y: 0 }
 
@@ -92,8 +94,10 @@ function startDrag(e: MouseEvent) {
 function onDrag(e: MouseEvent) {
   if (!isDragging.value) return
   requestAnimationFrame(() => {
-    position.value.x = e.clientX - dragOffset.x
-    position.value.y = e.clientY - dragOffset.y
+    const width = panelRef.value?.offsetWidth || Math.min(660, window.innerWidth - 24)
+    const height = panelRef.value?.offsetHeight || Math.min(480, window.innerHeight - 24)
+    position.value.x = Math.min(Math.max(12, e.clientX - dragOffset.x), window.innerWidth - width - 12)
+    position.value.y = Math.min(Math.max(12, e.clientY - dragOffset.y), window.innerHeight - height - 12)
   })
 }
 
@@ -106,8 +110,8 @@ function stopDrag() {
 onMounted(() => {
   if (typeof window !== 'undefined') {
     position.value = {
-      x: window.innerWidth / 2 - 350,
-      y: window.innerHeight / 2 - 260
+      x: Math.max(12, (window.innerWidth - Math.min(660, window.innerWidth - 24)) / 2),
+      y: Math.max(12, (window.innerHeight - Math.min(480, window.innerHeight - 24)) / 2)
     }
   }
 })
@@ -122,45 +126,44 @@ onUnmounted(() => {
     <Transition name="toolbox">
       <div
         v-show="visible"
-        class="fixed w-[660px] bg-white border border-[var(--color-border)] shadow-2xl rounded-2xl z-[9999] overflow-hidden flex flex-col"
-        :style="{ left: position.x + 'px', top: position.y + 'px', height: '480px' }"
+        ref="panelRef"
+        class="fixed z-50 flex h-[min(480px,calc(100dvh-1.5rem))] w-[min(660px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-2xl"
+        :style="{ left: position.x + 'px', top: position.y + 'px' }"
       >
         <div 
           class="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-gray-50 shrink-0 cursor-move select-none"
           @mousedown="startDrag"
         >
-        <div class="flex items-center gap-1 p-1 bg-[var(--color-surface-muted)] rounded-lg">
+        <div class="flex min-w-0 items-center gap-1 overflow-x-auto p-1 bg-[var(--color-surface-muted)] rounded-lg">
           <button
             v-for="tab in [
-              { key: 'rules', label: '条款查询', svg: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-              { key: 'premium', label: '保费测算', svg: 'M9 7h6m0 10v-3m-3 3v-3m-3 3v-3m2 0h4M9 7v1m6-1v1M9 11h6' },
-              { key: 'cashValue', label: '现金价值', svg: 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z' },
+              { key: 'rules', label: '条款查询', icon: 'lucide:file-search' },
+              { key: 'premium', label: '保费测算', icon: 'lucide:calculator' },
+              { key: 'cashValue', label: '现金价值', icon: 'lucide:chart-no-axes-combined' },
             ] as const"
             :key="tab.key"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200"
+            class="flex shrink-0 items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200"
             :class="activeTab === tab.key
               ? 'bg-white text-[var(--color-text-primary)] shadow-sm'
               : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'"
             @click="activeTab = tab.key"
           >
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="tab.svg" />
-            </svg>
+            <Icon :icon="tab.icon" class="w-3.5 h-3.5" />
             {{ tab.label }}
           </button>
         </div>
         <button
+          aria-label="关闭工具箱"
+          title="关闭工具箱"
           class="w-7 h-7 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-zinc-900 hover:bg-[var(--color-surface)] transition-colors"
           @click="$emit('close')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <Icon icon="lucide:x" class="w-4 h-4" />
         </button>
       </div>
 
-      <div class="flex min-h-0 h-[430px]">
-        <div class="w-[270px] shrink-0 p-4 border-r border-[var(--color-border-light)] overflow-y-auto bg-[var(--color-surface-hover)]">
+      <div class="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div class="w-full shrink-0 overflow-y-auto border-b border-[var(--color-border-light)] bg-[var(--color-surface-hover)] p-4 md:w-[270px] md:border-b-0 md:border-r">
           
           <div v-show="activeTab === 'rules'" class="space-y-4 animate-fade-in">
             <div>
@@ -278,9 +281,7 @@ onUnmounted(() => {
               </div>
               <div v-else class="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] animate-fade-in">
                 <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
-                  <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <Icon icon="lucide:file-search" class="w-8 h-8 text-[var(--color-text-muted)]" />
                 </div>
                 <p class="text-sm font-medium text-[var(--color-text-primary)]">等待输入参数</p>
                 <span class="text-xs mt-1.5 text-center leading-relaxed">在左侧输入关键词，点击检索</span>
@@ -300,9 +301,7 @@ onUnmounted(() => {
               </div>
               <div v-else class="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] animate-fade-in">
                 <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
-                  <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <Icon icon="lucide:circle-dollar-sign" class="w-8 h-8 text-[var(--color-text-muted)]" />
                 </div>
                 <p class="text-sm font-medium text-[var(--color-text-primary)]">等待输入参数</p>
                 <span class="text-xs mt-1.5 text-center leading-relaxed">配置完参数后点击计算保费</span>
@@ -322,9 +321,7 @@ onUnmounted(() => {
               </div>
               <div v-else class="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] animate-fade-in">
                 <div class="w-16 h-16 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
-                  <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
+                  <Icon icon="lucide:chart-no-axes-combined" class="w-8 h-8 text-[var(--color-text-muted)]" />
                 </div>
                 <p class="text-sm font-medium text-[var(--color-text-primary)]">等待输入参数</p>
                 <span class="text-xs mt-1.5 text-center leading-relaxed">修改参数自动进行现金价值计算</span>

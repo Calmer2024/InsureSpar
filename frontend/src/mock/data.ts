@@ -8,19 +8,19 @@ import type { Persona, Strategy, ChatMessage, Evaluation, FinalReport } from '..
 export const mockPersonas: Persona[] = [
     {
         persona_id: 'hard_boss',
-        name: '王总 — 企业高管',
+        name: '王总 - 企业高管',
         description: '45岁，某上市公司副总裁。风险意识极强，对保险持负面态度，反感推销。',
         difficulty: 'hard',
     },
     {
         persona_id: 'tech_savvy',
-        name: '李工 — IT工程师',
+        name: '李工 - IT工程师',
         description: '32岁，互联网公司资深工程师。逻辑思维强，喜欢对比数据，关注性价比。',
         difficulty: 'medium',
     },
     {
         persona_id: 'young_mother',
-        name: '张女士 — 年轻宝妈',
+        name: '张女士 - 年轻宝妈',
         description: '28岁，全职妈妈。关心孩子教育和家庭保障，愿意掏钱但预算有限。',
         difficulty: 'easy',
     },
@@ -63,14 +63,14 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's1-phase',
         role: 'system',
-        content: '🤖 客户Agent 正在思考回应...',
+        content: '客户正在思考回应...',
         turn: 1,
         logType: 'phase',
     },
     {
         id: 's1-tool',
         role: 'system',
-        content: '🔍 正在查询健康告知条件...',
+        content: '正在查询健康告知条件...',
         turn: 1,
         logType: 'tool_call',
         toolName: 'check_health_notice',
@@ -78,7 +78,7 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's1-tool-result',
         role: 'system',
-        content: '✅ 健康告知查询完成：标准体，无特殊告知项',
+        content: '健康告知查询完成：标准体，无特殊告知项',
         turn: 1,
         logType: 'tool_result',
         toolName: 'check_health_notice',
@@ -92,7 +92,7 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's1-stage',
         role: 'system',
-        content: '📍 阶段判定：💬 破冰与探寻（第1轮）',
+        content: '阶段判定：破冰与探寻（第1轮）',
         turn: 1,
         logType: 'stage_update',
     },
@@ -107,14 +107,14 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's2-phase',
         role: 'system',
-        content: '🤖 客户Agent 正在思考回应...',
+        content: '客户正在思考回应...',
         turn: 2,
         logType: 'phase',
     },
     {
         id: 's2-tool',
         role: 'system',
-        content: '🔍 正在查询产品费率（尊享百万医疗/重疾险）...',
+        content: '正在查询产品费率（尊享百万医疗/重疾险）...',
         turn: 2,
         logType: 'tool_call',
         toolName: 'query_premium',
@@ -122,7 +122,7 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's2-tool-result',
         role: 'system',
-        content: '✅ 费率查询完成：男性45岁，尊享百万医疗年缴 ¥2,350，重疾险50万保额年缴 ¥18,600',
+        content: '费率查询完成：男性45岁，尊享百万医疗年缴 ¥2,350，重疾险50万保额年缴 ¥18,600',
         turn: 2,
         logType: 'tool_result',
         toolName: 'query_premium',
@@ -136,7 +136,7 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's2-stage',
         role: 'system',
-        content: '📍 阶段判定：⚡ 异议处理（第2轮）',
+        content: '阶段判定：异议处理（第2轮）',
         turn: 2,
         logType: 'stage_update',
     },
@@ -151,7 +151,7 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's3-phase',
         role: 'system',
-        content: '🤖 客户Agent 正在思考回应...',
+        content: '客户正在思考回应...',
         turn: 3,
         logType: 'phase',
     },
@@ -164,7 +164,7 @@ export const mockMessages: ChatMessage[] = [
     {
         id: 's3-stage',
         role: 'system',
-        content: '📍 阶段判定：⚡ 异议处理（第3轮）',
+        content: '阶段判定：异议处理（第3轮）',
         turn: 3,
         logType: 'stage_update',
     },
@@ -206,7 +206,7 @@ export const mockEvaluations: Evaluation[] = [
 
 /** 模拟终极评估报告 */
 export const mockFinalReport: FinalReport = {
-    persona_name: '王总 — 企业高管',
+    persona_name: '王总 - 企业高管',
     strategy_id: 'consultant',
     final_stage: '需要跟进',
     turn_count: 8,

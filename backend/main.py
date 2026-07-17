@@ -3,6 +3,23 @@ InsureSpar — 多智能体保险销售对练系统
 FastAPI 入口文件
 """
 import logging
+import sys
+from contextlib import asynccontextmanager
+
+
+def _configure_stdio() -> None:
+    """Keep Windows consoles from crashing on UTF-8 startup logs."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            try:
+                reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+
+
+_configure_stdio()
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -13,13 +30,22 @@ from app.api.auto import router as auto_router
 from app.api.history import router as history_router
 from app.api.tools import router as tools_router
 from app.api.dashboard import router as dashboard_router
-from app.models.database import engine, Base
+from app.models.database import get_database_status, init_db
+
+logger = logging.getLogger(__name__)
 
 # 关闭 Uvicorn 的 ACCESS 访问日志（避免反复刷屏）
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-# 初始化数据库表结构（生产环境建议用 Alembic，目前对练系统直接全量创建即可）
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not init_db():
+        logger.warning(
+            "Backend started without database persistence. Start MySQL or fix DATABASE_URL, then restart."
+        )
+    yield
+
 
 app = FastAPI(
     title="InsureSpar 保险销售对练系统",
@@ -43,6 +69,7 @@ app = FastAPI(
 - **报告 (Final Report)**: 对局结束后的六维雷达图与总监综合点评
 """,
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 # 注册路由
@@ -67,5 +94,8 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "2.0.0"}
-
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "database": get_database_status(),
+    }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type {ChatMessage, Persona} from '../../types'
 import {computed, nextTick, ref, watch} from 'vue'
+import { Icon } from '@iconify/vue'
+import { personaAvatar } from '../../utils/avatar'
 import ChatBubble from './ChatBubble.vue'
 import RoundDivider from './RoundDivider.vue'
 import ChatInput from './ChatInput.vue'
@@ -60,18 +62,18 @@ watch(
 <template>
   <div class="relative flex flex-col h-full min-w-0 bg-white overflow-hidden">
 
-    <div
-        class="absolute top-0 left-0 right-0 px-8 py-5 flex items-center justify-between z-20 backdrop-blur-xl bg-white/75 border-b border-gray-100">
+    <div class="relative z-20 shrink-0 border-b border-gray-100 bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4 xl:px-8">
 
       <div class="relative group cursor-pointer">
         <div class="flex items-center gap-3">
           <div
               class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl shadow-sm border border-white overflow-hidden">
-            <img v-if="activePersona?.persona_id" :src="`http://127.0.0.1:8000/assets/avatars/${activePersona.persona_id}.png`"
+            <img v-if="personaAvatar(activePersona)" :src="personaAvatar(activePersona)"
                  :alt="customerName" class="w-full h-full object-cover"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
-            <div :style="{ display: activePersona?.persona_id ? 'none' : 'flex' }"
-                 class="w-full h-full items-center justify-center">🧑🏻
+            <div :style="{ display: personaAvatar(activePersona) ? 'none' : 'flex' }"
+                 class="w-full h-full items-center justify-center text-gray-400">
+              <Icon icon="lucide:user-round" class="h-4 w-4" />
             </div>
           </div>
           <div>
@@ -81,14 +83,15 @@ watch(
         </div>
 
         <div
-            class="absolute left-0 top-full mt-3 w-96 bg-white rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-gray-100 p-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-50">
+            class="absolute left-0 top-full mt-3 w-[min(24rem,calc(100vw-3rem))] bg-white rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-gray-100 p-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-50">
           <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl overflow-hidden">
-              <img v-if="activePersona?.persona_id" :src="`http://127.0.0.1:8000/assets/avatars/${activePersona.persona_id}.png`"
+              <img v-if="personaAvatar(activePersona)" :src="personaAvatar(activePersona)"
                    :alt="customerName" class="w-full h-full object-cover"
                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
-              <div :style="{ display: activePersona?.persona_id ? 'none' : 'flex' }"
-                   class="w-full h-full items-center justify-center">🧑🏻
+              <div :style="{ display: personaAvatar(activePersona) ? 'none' : 'flex' }"
+                   class="w-full h-full items-center justify-center text-gray-400">
+                <Icon icon="lucide:user-round" class="h-5 w-5" />
               </div>
             </div>
             <div>
@@ -138,25 +141,15 @@ watch(
         </div>
       </div>
 
-      <button
-          class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-        </svg>
-      </button>
     </div>
 
-    <div ref="chatContainer" class="flex-1 overflow-y-auto px-8 pt-28 pb-40">
+    <div ref="chatContainer" class="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-6 xl:px-8">
 
       <div v-if="messages.length === 0"
            class="h-full flex flex-col items-center justify-center text-center animate-fade-in pb-10">
         <div
             class="w-20 h-20 rounded-[2rem] bg-gray-50 shadow-sm border border-gray-100 flex items-center justify-center mb-6">
-          <svg class="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-          </svg>
+          <Icon icon="lucide:messages-square" class="w-10 h-10 text-gray-300" />
         </div>
         <h3 class="text-[16px] font-bold text-gray-800">对练已就绪</h3>
         <p class="text-xs text-gray-400 mt-2 max-w-[240px] leading-relaxed">系统已加载《{{ strategyName }}》策略<br>请输入话术或点击底部按钮推进。

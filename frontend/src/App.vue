@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { Icon } from '@iconify/vue'
 import type { AppStatus, ChatMessage, Evaluation, FinalReport, Persona, Strategy } from './types'
 import type { SSEEvent } from './services/api'
 import {
@@ -43,6 +44,7 @@ const reportLoading = ref(false)
 const showSetupModal = ref(false)
 const showHistory = ref(false)
 const isHistoryView = ref(false)
+const isEvalCollapsed = ref(false)
 
 // ── 标题 ──
 const chatTitle = ref('对话面板')
@@ -56,6 +58,7 @@ const renderedEvalTurns = new Set<number>()
 
 // ── 自动推进 ──
 let autoTimer: ReturnType<typeof setInterval> | null = null
+let evalSidebarMedia: MediaQueryList | null = null
 
 // ── ID 生成 ──
 let _id = 0
@@ -65,6 +68,9 @@ const mid = () => `m${++_id}-${Date.now()}`
  * 初始化
  * ======================================== */
 onMounted(async () => {
+  evalSidebarMedia = window.matchMedia('(max-width: 1023px)')
+  isEvalCollapsed.value = evalSidebarMedia.matches
+  evalSidebarMedia.addEventListener('change', handleEvalSidebarBreakpoint)
   try {
     const [p, s] = await Promise.all([fetchPersonas(), fetchStrategies()])
     personas.value = p
@@ -77,8 +83,13 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (evalPollTimer) clearInterval(evalPollTimer)
+  evalSidebarMedia?.removeEventListener('change', handleEvalSidebarBreakpoint)
   stopAutoTimer()
 })
+
+function handleEvalSidebarBreakpoint(event: MediaQueryListEvent) {
+  if (event.matches) isEvalCollapsed.value = true
+}
 
 /* ========================================
  * 会话管理
@@ -120,7 +131,7 @@ async function onStart(personaId: string, strategyId: string) {
     chatSubtitle.value = `${r.persona_description}`
     activePersona.value = personas.value.find(p => p.persona_id === r.persona_id) || null
     appStatus.value = 'ready'
-    statusText.value = '就绪 — 输入话术或点击 AI 推进'
+    statusText.value = '就绪，请输入话术或点击 AI 推进'
     addSys('会话已创建，可手动输入或 AI 推进', 0, 'status')
     startEvalPolling()
   } catch (e: any) {
@@ -342,8 +353,8 @@ async function handleResumeSession() {
 function finishConversation(label: string, turn: number) {
   isFinished.value = true
   appStatus.value = 'finished'
-  statusText.value = `对话结束 — ${label}`
-  addSys(`对话结束 — ${label}`, turn, 'stage_update')
+  statusText.value = `对话结束：${label}`
+  addSys(`训练完成，客户最终状态为「${label}」`, turn, 'stage_update')
   loadFinalReport()
 }
 
@@ -466,27 +477,26 @@ function findMsg(id: string) { return messages.value.find(m => m.id === id) }
 function buildStageText(ev: SSEEvent): string {
   const rawStage = ev.detected_stage_raw || ev.stage || ''
   const finalStage = ev.stage || ''
-  const rawLabel = ev.detected_stage_label || ev.stage_label || ''
   const finalLabel = ev.stage_label || ''
   const strike = ev.decision_strike || 0
   const required = ev.decision_strikes_required || 2
   const turn = ev.turn_count || 0
 
   if (rawStage === finalStage) {
-    return `${finalLabel}（第${turn}轮）`
+    return `第 ${turn} 轮：客户当前处于「${finalLabel}」阶段`
   }
   
   if (strike === 0) {
-     return `${rawLabel}（过早试探底线，被强制拖回异议区）`
+     return `客户仍有顾虑，建议先确认需求并回应异议，再尝试推进决定`
   }
 
-  return `${rawLabel}（确认中 ${strike}/${required}，再次确认则对话结束）`
+  return `客户意向正在确认（${strike}/${required}），下一轮请用开放式问题核实真实决定`
 }
 </script>
 
 <template>
-  <div class="h-screen w-full flex flex-col bg-[var(--color-surface)] text-[var(--color-text-primary)] font-sans selection:bg-zinc-200">
-    <header class="px-6 py-5 flex-shrink-0 z-10">
+  <div class="h-[100dvh] w-full flex flex-col bg-[var(--color-surface)] text-[var(--color-text-primary)] font-sans selection:bg-zinc-200">
+    <header class="px-3 py-3 sm:px-5 sm:py-4 xl:px-6 xl:py-5 flex-shrink-0 z-10">
       <TopBar
         :status="appStatus"
         :status-text="statusText"
@@ -501,7 +511,7 @@ function buildStageText(ev: SSEEvent): string {
       />
     </header>
 
-    <main v-if="currentView === 'main'" class="flex flex-1 min-h-0 px-6 pb-6 gap-6 max-w-[1800px] mx-auto w-full">
+    <main v-if="currentView === 'main'" class="relative flex flex-1 min-h-0 px-3 pb-3 sm:px-5 sm:pb-5 xl:px-6 xl:pb-6 gap-3 xl:gap-4 max-w-[1800px] mx-auto w-full">
       
       <section class="flex-1 flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden transition-all duration-300">
         <ChatPanel
@@ -520,14 +530,35 @@ function buildStageText(ev: SSEEvent): string {
         />
       </section>
 
-      <aside class="w-[420px] shrink-0 flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden transition-all duration-300">
-        <EvalPanel
-          :evaluations="evaluations"
-          :final-report="finalReport"
-          :report-loading="reportLoading"
-          :is-finished="isFinished"
-        />
-      </aside>
+      <div
+        class="shrink-0 transition-[width] duration-300 lg:relative lg:inset-auto lg:z-auto"
+        :class="isEvalCollapsed
+          ? 'relative inset-auto z-auto w-12'
+          : 'absolute inset-y-0 right-3 z-30 w-[calc(100%-1.5rem)] sm:right-5 sm:w-[min(420px,calc(100%-2.5rem))] lg:w-[420px]'"
+      >
+        <aside
+          class="relative h-full w-full flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden"
+        >
+          <button
+            type="button"
+            class="absolute right-2 top-3 z-30 grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-white text-zinc-500 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+            :title="isEvalCollapsed ? '展开评估面板' : '收起评估面板'"
+            :aria-label="isEvalCollapsed ? '展开评估面板' : '收起评估面板'"
+            :aria-expanded="!isEvalCollapsed"
+            @click="isEvalCollapsed = !isEvalCollapsed"
+          >
+            <Icon :icon="isEvalCollapsed ? 'lucide:panel-right-open' : 'lucide:panel-right-close'" class="h-4 w-4" />
+          </button>
+          <EvalPanel
+            class="transition-[opacity,transform] duration-200"
+            :class="isEvalCollapsed ? 'pointer-events-none translate-x-2 opacity-0' : 'translate-x-0 opacity-100'"
+            :evaluations="evaluations"
+            :final-report="finalReport"
+            :report-loading="reportLoading"
+            :is-finished="isFinished"
+          />
+        </aside>
+      </div>
     </main>
 
     <DashboardView

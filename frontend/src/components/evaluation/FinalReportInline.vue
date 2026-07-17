@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FinalReport } from '../../types'
 import { computed, ref } from 'vue'
+import { Icon } from '@iconify/vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { RadarChart } from 'echarts/charts'
@@ -107,9 +108,7 @@ const radarOption = computed(() => {
         @click="showReview = !showReview"
       >
         <span class="text-sm font-semibold text-[var(--color-text-primary)]">考官总评</span>
-        <svg class="w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200" :class="{ 'rotate-180': showReview }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        <Icon icon="lucide:chevron-down" class="w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200" :class="{ 'rotate-180': showReview }" />
       </button>
       <div v-if="showReview" class="px-4 pb-4 bg-white text-sm leading-relaxed text-[var(--color-text-secondary)] whitespace-pre-wrap border-t border-[var(--color-border-light)] pt-3">
         {{ report.review }}
@@ -119,9 +118,7 @@ const radarOption = computed(() => {
     <details v-if="report.per_turn_scores?.length" class="group rounded-xl border border-[var(--color-border)] overflow-hidden bg-white">
       <summary class="flex items-center justify-between px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors list-none [&::-webkit-details-marker]:hidden">
         各轮评分明细
-        <svg class="w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        <Icon icon="lucide:chevron-down" class="w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200 group-open:rotate-180" />
       </summary>
       <div class="px-3 pb-3 pt-1 border-t border-[var(--color-border-light)] space-y-2 max-h-[200px] overflow-y-auto">
         <div

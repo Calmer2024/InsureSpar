@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Persona, Strategy } from '../../types'
 import { ref, watch } from 'vue'
+import { Icon } from '@iconify/vue'
+import { personaAvatar } from '../../utils/avatar'
 
 const props = defineProps<{
   visible: boolean
@@ -39,33 +41,38 @@ function difficultyTag(d?: string) {
         @click.self="$emit('close')"
       >
         <div
-          class="modal-content bg-white rounded-2xl p-8 w-[760px] max-w-[92vw] shadow-[var(--shadow-modal)] border border-[var(--color-border)]"
+          class="modal-content max-h-[92dvh] w-[760px] max-w-[92vw] overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-modal)] sm:p-8"
         >
           <div class="mb-6">
             <h2 class="text-xl font-bold text-[var(--color-text-primary)] tracking-tight">配置新对练</h2>
             <p class="text-xs text-[var(--color-text-secondary)] mt-1">选择目标客户与对应策略，配置完成后即可开始</p>
           </div>
 
-          <div class="flex gap-6">
+          <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div class="flex-1">
               <p class="text-[11px] font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">目标客户</p>
               <div class="space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
                 <button
                   v-for="p in personas"
                   :key="p.persona_id"
-                  class="w-full text-left p-4 rounded-xl border transition-all duration-200 focus:outline-none"
+                  class="w-full text-left p-3.5 rounded-xl border transition-all duration-200 focus:outline-none"
                   :class="selectedPersona === p.persona_id
                     ? 'border-zinc-900 bg-zinc-50 shadow-sm ring-1 ring-zinc-900/10'
                     : 'border-[var(--color-border)] bg-white hover:border-zinc-300 hover:bg-[var(--color-surface)]'"
                   @click="selectedPersona = p.persona_id"
                 >
-                  <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-sm font-semibold text-[var(--color-text-primary)]">{{ p.name }}</span>
-                    <span class="text-[10px] font-medium px-2 py-0.5 rounded-md" :class="difficultyTag(p.difficulty).cls">
-                      {{ difficultyTag(p.difficulty).label }}
-                    </span>
+                  <div class="flex items-center gap-3">
+                    <img :src="personaAvatar(p)" :alt="`${p.name}头像`" class="h-10 w-10 shrink-0 rounded-lg border border-[var(--color-border-light)] object-cover" />
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="truncate text-sm font-semibold text-[var(--color-text-primary)]">{{ p.name }}</span>
+                        <span class="text-[10px] font-medium px-2 py-0.5 rounded-md" :class="difficultyTag(p.difficulty).cls">
+                          {{ difficultyTag(p.difficulty).label }}
+                        </span>
+                      </div>
+                      <p class="text-xs text-[var(--color-text-secondary)] line-clamp-2 leading-relaxed">{{ p.description }}</p>
+                    </div>
                   </div>
-                  <p class="text-xs text-[var(--color-text-secondary)] line-clamp-2 leading-relaxed">{{ p.description }}</p>
                 </button>
               </div>
             </div>
@@ -92,7 +99,7 @@ function difficultyTag(d?: string) {
             </div>
           </div>
 
-          <div class="mt-8 flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border-light)]">
+          <div class="mt-8 flex items-center justify-end gap-3 border-t border-[var(--color-border-light)] pt-4">
             <button
               class="px-5 py-2.5 rounded-xl border border-[var(--color-border)] bg-white text-sm font-medium text-[var(--color-text-secondary)] hover:text-zinc-900 hover:bg-[var(--color-surface)] transition-all"
               @click="$emit('close')"
@@ -101,10 +108,10 @@ function difficultyTag(d?: string) {
             </button>
             <button
               :disabled="!selectedPersona || !selectedStrategy"
-              class="cta-btn px-8 py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              class="cta-btn px-6 sm:px-8 py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
               @click="selectedPersona && selectedStrategy && $emit('start', selectedPersona, selectedStrategy)"
             >
-              开始对练
+              <Icon icon="lucide:play" class="mr-1.5 h-4 w-4" />开始对练
             </button>
           </div>
         </div>

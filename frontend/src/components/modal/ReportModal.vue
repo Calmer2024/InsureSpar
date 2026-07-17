@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FinalReport } from '../../types'
 import { computed } from 'vue'
+import { Icon } from '@iconify/vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { RadarChart } from 'echarts/charts'
@@ -78,9 +79,7 @@ const radarOption = computed(() => {
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[var(--color-border)] bg-white text-xs font-medium text-[var(--color-text-secondary)] hover:text-zinc-900 hover:border-zinc-300 hover:bg-[var(--color-surface)] transition-all"
               @click="$emit('close')"
             >
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon icon="lucide:x" class="w-3.5 h-3.5" />
               关闭
             </button>
           </div>

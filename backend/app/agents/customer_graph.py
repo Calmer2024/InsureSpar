@@ -41,7 +41,7 @@ llm_with_tools = llm.bind_tools(tools)
 
 
 # ==========================================
-# 结构化输出模型
+# 结构化输出模型（裁判LLM）
 # ==========================================
 class DialogueStateUpdate(BaseModel):
     current_stage: str = Field(

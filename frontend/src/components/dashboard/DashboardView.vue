@@ -24,27 +24,27 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto px-6 pb-6">
+  <div class="flex-1 overflow-y-auto px-3 pb-3 sm:px-5 sm:pb-5 xl:px-6 xl:pb-6">
 
     <!-- Dashboard Grid -->
-    <div class="grid grid-cols-3 gap-6 max-w-[1800px] mx-auto">
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-6 max-w-[1800px] mx-auto">
       <!-- Left column: Profile -->
-      <div class="col-span-1">
+      <div class="xl:col-span-1">
         <ProfileCard :data="overview" />
       </div>
 
       <!-- Middle + Right: Radar -->
-      <div class="col-span-2">
+      <div class="xl:col-span-2">
         <RadarChartCard :data="capabilities" />
       </div>
 
       <!-- Bottom Left: Growth Curve (wider) -->
-      <div class="col-span-2">
+      <div class="xl:col-span-2">
         <GrowthCurveChart :data="growth" />
       </div>
 
       <!-- Bottom Right: Diagnostics -->
-      <div class="col-span-1">
+      <div class="xl:col-span-1">
         <DiagnosticList :data="capabilities" />
       </div>
     </div>

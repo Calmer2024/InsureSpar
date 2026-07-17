@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { Icon } from '@iconify/vue'
 import type { HistorySession } from '../../services/api'
 import { fetchHistorySessions, fetchHistoryDetail } from '../../services/api'
 import type { ChatMessage, Evaluation, FinalReport, Persona, Strategy } from '../../types'
+import { personaAvatar } from '../../utils/avatar'
 
 const props = defineProps<{
   visible: boolean
@@ -155,12 +157,12 @@ function timeAgo(iso: string | null): string {
           <div class="px-6 py-5 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-white">
             <h2 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">历史记录</h2>
             <button
+              aria-label="关闭历史记录"
+              title="关闭历史记录"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-zinc-900 hover:bg-[var(--color-surface)] transition-colors"
               @click="$emit('close')"
             >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon icon="lucide:x" class="w-5 h-5" />
             </button>
           </div>
 
@@ -173,9 +175,7 @@ function timeAgo(iso: string | null): string {
 
             <div v-else-if="sessions.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
               <div class="w-16 h-16 rounded-2xl bg-white border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-5">
-                <svg class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
+                <Icon icon="lucide:history" class="w-8 h-8 text-[var(--color-text-muted)]" />
               </div>
               <p class="text-sm font-medium text-[var(--color-text-primary)]">暂无历史记录</p>
               <p class="text-xs text-[var(--color-text-secondary)] mt-1">完成的对练将在这里显示</p>
@@ -199,12 +199,7 @@ function timeAgo(iso: string | null): string {
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-md flex items-center justify-center border"
                          :class="s.is_finished ? 'bg-zinc-50 border-zinc-200 text-zinc-700' : 'bg-white border-zinc-200 text-zinc-400'">
-                      <svg v-if="s.is_finished" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <Icon :icon="s.is_finished ? 'lucide:check' : 'lucide:clock-3'" class="w-3.5 h-3.5" />
                     </div>
                     <span class="text-xs font-medium" :class="s.is_finished ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)]'">
                       {{ getStageLabel(s.final_stage) }}
@@ -215,6 +210,7 @@ function timeAgo(iso: string | null): string {
 
                 <div class="mb-3">
                   <div class="flex items-center gap-2 mb-1">
+                    <img v-if="getPersona(s.persona_id)" :src="personaAvatar(getPersona(s.persona_id))" :alt="`${getPersona(s.persona_id)?.name}头像`" class="h-8 w-8 shrink-0 rounded-lg object-cover" />
                     <div class="text-sm font-semibold text-[var(--color-text-primary)]">
                        {{ getPersona(s.persona_id)?.name || s.persona_id }}
                     </div>
