@@ -56,8 +56,8 @@ const option = computed(() => {
 </script>
 
 <template>
-  <div class="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] p-6 flex flex-col animate-fade-in">
-    <h3 class="text-[15px] font-bold text-[var(--color-text-primary)] mb-1">综合能力模型</h3>
+  <div class="flex h-full flex-col px-1 py-2 animate-fade-in">
+    <h3 class="mb-1 text-[17px] font-bold text-[var(--color-text-primary)]">综合能力模型</h3>
     <p class="text-[11px] text-[var(--color-text-muted)] mb-4">基于最近 10 次对练数据</p>
 
     <div class="flex-1 min-h-0 flex items-center justify-center">

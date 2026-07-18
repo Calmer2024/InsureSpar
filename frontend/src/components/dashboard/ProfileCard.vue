@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
 import type { DashboardOverview } from '../../services/api'
 
 defineProps<{
@@ -8,12 +7,12 @@ defineProps<{
 </script>
 
 <template>
-  <div class="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] p-6 flex flex-col gap-5 animate-fade-in h-full">
+  <div class="flex h-full flex-col gap-7 px-1 py-2 animate-fade-in">
     <!-- Profile -->
     <div class="flex items-center gap-4">
       <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center shadow-sm border border-emerald-100">
         <img v-if="data?.user_info.avatar_url" :src="data.user_info.avatar_url" :alt="`${data.user_info.name}头像`" class="h-full w-full rounded-2xl object-cover" />
-        <Icon v-else icon="lucide:circle-user-round" class="w-8 h-8 text-emerald-500" />
+        <img v-else src="/insurespar_logged_out.png" alt="未登录用户头像" class="h-full w-full rounded-2xl object-cover" />
       </div>
       <div class="flex-1 min-w-0">
         <h2 class="text-xl font-bold text-[var(--color-text-primary)] tracking-tight">{{ data?.user_info.name || '加载中...' }}</h2>
@@ -26,28 +25,24 @@ defineProps<{
       </div>
     </div>
 
-    <!-- Divider -->
-    <div class="h-px bg-gray-100"></div>
-
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-2 gap-3">
-      <div class="bg-[var(--color-surface)] rounded-xl p-4 text-center transition-all hover:shadow-sm">
-        <div class="text-2xl font-extrabold text-emerald-500 tabular-nums leading-none">{{ data?.stats.total_sessions ?? '暂无' }}</div>
-        <div class="text-[11px] text-[var(--color-text-muted)] font-medium mt-2">累计对练</div>
+    <div class="grid grid-cols-2 gap-x-8 gap-y-7 px-1">
+      <div>
+        <div class="metric-primary text-[28px] leading-none text-[var(--color-accent)] tabular-nums">{{ data?.stats.total_sessions ?? '暂无' }}</div>
+        <div class="mt-2 text-[11px] text-[var(--color-text-muted)]">累计对练</div>
       </div>
-      <div class="bg-[var(--color-surface)] rounded-xl p-4 text-center transition-all hover:shadow-sm">
-        <div class="text-2xl font-extrabold text-emerald-500 tabular-nums leading-none">{{ data?.stats.deal_closed_count ?? '暂无' }}</div>
-        <div class="text-[11px] text-[var(--color-text-muted)] font-medium mt-2">通关次数</div>
+      <div>
+        <div class="metric-primary text-[28px] leading-none text-[var(--color-accent)] tabular-nums">{{ data?.stats.deal_closed_count ?? '暂无' }}</div>
+        <div class="mt-2 text-[11px] text-[var(--color-text-muted)]">通关次数</div>
       </div>
-      <div class="bg-[var(--color-surface)] rounded-xl p-4 text-center transition-all hover:shadow-sm">
-        <div class="text-2xl font-extrabold text-emerald-500 tabular-nums leading-none">{{ data?.stats.avg_score_all_time?.toFixed(1) ?? '暂无' }}</div>
-        <div class="text-[11px] text-[var(--color-text-muted)] font-medium mt-2">历史均分</div>
+      <div>
+        <div class="metric-primary text-[28px] leading-none text-[var(--color-accent)] tabular-nums">{{ data?.stats.avg_score_all_time?.toFixed(1) ?? '暂无' }}</div>
+        <div class="mt-2 text-[11px] text-[var(--color-text-muted)]">历史均分</div>
       </div>
-      <div class="bg-[var(--color-surface)] rounded-xl p-4 text-center transition-all hover:shadow-sm">
-        <div class="text-2xl font-extrabold text-emerald-500 tabular-nums leading-none">
+      <div>
+        <div class="metric-primary text-[28px] leading-none text-[var(--color-accent)] tabular-nums">
           {{ data?.stats.total_duration_minutes ? Math.round(data.stats.total_duration_minutes / 60) + 'h' : '暂无' }}
         </div>
-        <div class="text-[11px] text-[var(--color-text-muted)] font-medium mt-2">总时长</div>
+        <div class="mt-2 text-[11px] text-[var(--color-text-muted)]">总时长</div>
       </div>
     </div>
   </div>

@@ -14,6 +14,8 @@ import {
 } from './services/api'
 
 import TopBar from './components/layout/TopBar.vue'
+import AppSidebar from './components/layout/AppSidebar.vue'
+import HomeView from './components/home/HomeView.vue'
 import ChatPanel from './components/chat/ChatPanel.vue'
 import EvalPanel from './components/evaluation/EvalPanel.vue'
 import SessionSetupModal from './components/modal/SessionSetupModal.vue'
@@ -21,7 +23,7 @@ import HistoryDrawer from './components/history/HistoryDrawer.vue'
 import DashboardView from './components/dashboard/DashboardView.vue'
 
 // ── 状态 ──
-const currentView = ref<'main' | 'dashboard'>('main')
+const currentView = ref<'home' | 'practice' | 'dashboard'>('home')
 const appStatus = ref<AppStatus>('idle')
 const statusText = ref('等待启动')
 const turnCount = ref(0)
@@ -44,7 +46,7 @@ const reportLoading = ref(false)
 const showSetupModal = ref(false)
 const showHistory = ref(false)
 const isHistoryView = ref(false)
-const isEvalCollapsed = ref(false)
+const isEvalCollapsed = ref(true)
 
 // ── 标题 ──
 const chatTitle = ref('对话面板')
@@ -58,7 +60,6 @@ const renderedEvalTurns = new Set<number>()
 
 // ── 自动推进 ──
 let autoTimer: ReturnType<typeof setInterval> | null = null
-let evalSidebarMedia: MediaQueryList | null = null
 
 // ── ID 生成 ──
 let _id = 0
@@ -68,9 +69,6 @@ const mid = () => `m${++_id}-${Date.now()}`
  * 初始化
  * ======================================== */
 onMounted(async () => {
-  evalSidebarMedia = window.matchMedia('(max-width: 1023px)')
-  isEvalCollapsed.value = evalSidebarMedia.matches
-  evalSidebarMedia.addEventListener('change', handleEvalSidebarBreakpoint)
   try {
     const [p, s] = await Promise.all([fetchPersonas(), fetchStrategies()])
     personas.value = p
@@ -78,18 +76,12 @@ onMounted(async () => {
   } catch (e) {
     console.error('加载初始数据失败', e)
   }
-  showSetupModal.value = true
 })
 
 onUnmounted(() => {
   if (evalPollTimer) clearInterval(evalPollTimer)
-  evalSidebarMedia?.removeEventListener('change', handleEvalSidebarBreakpoint)
   stopAutoTimer()
 })
-
-function handleEvalSidebarBreakpoint(event: MediaQueryListEvent) {
-  if (event.matches) isEvalCollapsed.value = true
-}
 
 /* ========================================
  * 会话管理
@@ -118,7 +110,12 @@ function resetSession() {
 }
 
 function handleNewSession() {
+  currentView.value = 'practice'
   showSetupModal.value = true
+}
+
+function navigateTo(view: 'home' | 'practice' | 'dashboard') {
+  currentView.value = view
 }
 
 async function onStart(personaId: string, strategyId: string) {
@@ -154,7 +151,7 @@ async function handleSend(message: string) {
   // 销售消息上屏
   messages.value.push({ id: mid(), role: 'sales', content: message, turn })
 
-  // 客户占位 — 懒创建，让工具调用排在前面
+  // 延迟创建客户占位，让工具调用排在前面
   const cid = mid()
   let customerPushed = false
   const ensureCustomer = () => {
@@ -495,75 +492,104 @@ function buildStageText(ev: SSEEvent): string {
 </script>
 
 <template>
-  <div class="h-[100dvh] w-full flex flex-col bg-[var(--color-surface)] text-[var(--color-text-primary)] font-sans selection:bg-zinc-200">
-    <header class="px-3 py-3 sm:px-5 sm:py-4 xl:px-6 xl:py-5 flex-shrink-0 z-10">
-      <TopBar
-        :status="appStatus"
-        :status-text="statusText"
-        :turn-count="turnCount"
-        :stage-label="stageLabel"
-        :session-id="sessionId"
-        :show-back-button="currentView === 'dashboard'"
-        @new-session="handleNewSession"
-        @show-history="showHistory = true"
-        @show-dashboard="currentView = 'dashboard'"
-        @back="currentView = 'main'"
-      />
-    </header>
-
-    <main v-if="currentView === 'main'" class="relative flex flex-1 min-h-0 px-3 pb-3 sm:px-5 sm:pb-5 xl:px-6 xl:pb-6 gap-3 xl:gap-4 max-w-[1800px] mx-auto w-full">
-      
-      <section class="flex-1 flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden transition-all duration-300">
-        <ChatPanel
-          :messages="messages"
-          :title="chatTitle"
-          :subtitle="chatSubtitle"
-          :active-persona="activePersona"
-          :disabled="appStatus === 'processing'"
-          :is-finished="isFinished"
-          :is-history-view="isHistoryView"
-          :auto-timer-active="autoTimerActive"
-          @send="handleSend"
-          @step="handleStep"
-          @toggle-auto-timer="toggleAutoTimer"
-          @resume-session="handleResumeSession"
-        />
-      </section>
-
-      <div
-        class="shrink-0 transition-[width] duration-300 lg:relative lg:inset-auto lg:z-auto"
-        :class="isEvalCollapsed
-          ? 'relative inset-auto z-auto w-12'
-          : 'absolute inset-y-0 right-3 z-30 w-[calc(100%-1.5rem)] sm:right-5 sm:w-[min(420px,calc(100%-2.5rem))] lg:w-[420px]'"
-      >
-        <aside
-          class="relative h-full w-full flex flex-col bg-[var(--color-surface-card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--color-border)] overflow-hidden"
-        >
-          <button
-            type="button"
-            class="absolute right-2 top-3 z-30 grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-white text-zinc-500 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
-            :title="isEvalCollapsed ? '展开评估面板' : '收起评估面板'"
-            :aria-label="isEvalCollapsed ? '展开评估面板' : '收起评估面板'"
-            :aria-expanded="!isEvalCollapsed"
-            @click="isEvalCollapsed = !isEvalCollapsed"
-          >
-            <Icon :icon="isEvalCollapsed ? 'lucide:panel-right-open' : 'lucide:panel-right-close'" class="h-4 w-4" />
-          </button>
-          <EvalPanel
-            class="transition-[opacity,transform] duration-200"
-            :class="isEvalCollapsed ? 'pointer-events-none translate-x-2 opacity-0' : 'translate-x-0 opacity-100'"
-            :evaluations="evaluations"
-            :final-report="finalReport"
-            :report-loading="reportLoading"
-            :is-finished="isFinished"
-          />
-        </aside>
-      </div>
-    </main>
-
-    <DashboardView
-      v-else-if="currentView === 'dashboard'"
+  <div class="flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--color-shell)] text-[var(--color-text-primary)] font-sans selection:bg-emerald-100 lg:flex-row lg:py-5 lg:pl-5">
+    <AppSidebar
+      :current-view="currentView"
+      @navigate="navigateTo"
+      @new-session="handleNewSession"
+      @show-history="showHistory = true"
     />
+
+    <div class="flex min-h-0 min-w-0 w-full flex-1 flex-col pb-16 lg:overflow-hidden lg:pb-0">
+      <main v-if="currentView === 'home'" class="min-h-0 flex-1 overflow-y-auto">
+        <HomeView
+          @start-practice="handleNewSession"
+          @navigate-dashboard="currentView = 'dashboard'"
+          @show-history="showHistory = true"
+        />
+      </main>
+
+      <template v-else-if="currentView === 'practice'">
+        <main class="min-h-0 flex-1 overflow-hidden">
+          <section class="practice-panel relative flex h-full w-full flex-col overflow-hidden bg-white">
+            <header class="z-20 shrink-0 bg-white px-4 pb-3 pt-5 sm:px-6 sm:pt-6 xl:px-8">
+              <TopBar
+                :status="appStatus"
+                :status-text="statusText"
+                :turn-count="turnCount"
+                :stage-label="stageLabel"
+                :session-id="sessionId"
+                :eval-open="!isEvalCollapsed"
+                @new-session="handleNewSession"
+                @show-history="showHistory = true"
+                @show-dashboard="currentView = 'dashboard'"
+                @toggle-evaluation="isEvalCollapsed = !isEvalCollapsed"
+                @back="currentView = 'home'"
+              />
+            </header>
+
+            <div class="relative min-h-0 flex-1 overflow-hidden">
+              <ChatPanel
+                class="h-full"
+                :messages="messages"
+                :title="chatTitle"
+                :subtitle="chatSubtitle"
+                :active-persona="activePersona"
+                :disabled="appStatus === 'processing'"
+                :is-finished="isFinished"
+                :is-history-view="isHistoryView"
+                :auto-timer-active="autoTimerActive"
+                @send="handleSend"
+                @step="handleStep"
+                @toggle-auto-timer="toggleAutoTimer"
+                @resume-session="handleResumeSession"
+              />
+
+              <aside
+                v-if="!isEvalCollapsed"
+                class="absolute inset-y-0 right-0 z-30 w-full bg-white shadow-[-16px_0_32px_rgba(42,81,57,0.08)] sm:w-[420px]"
+              >
+                <button
+                  type="button"
+                  class="absolute right-3 top-3 z-40 grid h-8 w-8 place-items-center rounded-full border border-[var(--color-border)] bg-white text-zinc-500 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+                  title="关闭实时反馈"
+                  aria-label="关闭实时反馈"
+                  @click="isEvalCollapsed = true"
+                >
+                  <Icon icon="lucide:x" class="h-4 w-4" />
+                </button>
+                <EvalPanel
+                  :evaluations="evaluations"
+                  :final-report="finalReport"
+                  :report-loading="reportLoading"
+                  :is-finished="isFinished"
+                />
+              </aside>
+            </div>
+          </section>
+        </main>
+      </template>
+
+      <template v-else>
+        <main class="min-h-0 flex-1 overflow-hidden">
+          <section class="practice-panel flex h-full w-full flex-col overflow-hidden bg-white">
+            <header class="flex h-[88px] shrink-0 items-center justify-between gap-4 bg-white px-4 sm:px-6 xl:px-8">
+              <h1 class="text-[25px] font-bold leading-[1.35] sm:text-[28px]">能力中心</h1>
+              <button
+                type="button"
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-accent)] text-white transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-2"
+                title="新建对练"
+                aria-label="新建对练"
+                @click="handleNewSession"
+              >
+                <Icon icon="lucide:plus" class="h-4 w-4" />
+              </button>
+            </header>
+            <DashboardView />
+          </section>
+        </main>
+      </template>
+    </div>
 
     <SessionSetupModal
       :visible="showSetupModal"

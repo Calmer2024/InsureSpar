@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans-sc": "^5.2.10",
+    "@iconify-icons/lucide": "^1.2.135",
     "@iconify/vue": "^5.0.0",
     "echarts": "^6.0.0",
     "markdown-it": "^14.2.0",

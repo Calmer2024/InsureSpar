@@ -14,7 +14,7 @@ defineProps<{
 
 <template>
   <div class="flex flex-col h-full bg-white">
-    <div class="px-6 py-4 pr-14 border-b border-[var(--color-border)] bg-white shrink-0 flex flex-col justify-center">
+    <div class="px-6 py-4 pr-14 bg-white shrink-0 flex flex-col justify-center">
       <h2 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight flex items-center gap-2">
         <div class="w-6 h-6 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center">
           <Icon icon="lucide:list-checks" class="w-3.5 h-3.5 text-[var(--color-text-primary)]" />

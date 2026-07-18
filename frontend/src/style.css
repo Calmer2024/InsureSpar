@@ -1,49 +1,54 @@
 @import "tailwindcss";
 
-/* ========================================
- * InsureSpar 设计系统 — 现代 SaaS (Shadcn 风格)
- * 主色调: 纯净白 + 锌灰 (Zinc) + 微妙阴影
- * ======================================== */
+/* InsureSpar product workspace tokens */
 
 @theme {
+  --font-sans: "Noto Sans SC Variable", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+
   /* 基础背景色 - 极其轻微的冷灰，凸显白色卡片 */
-  --color-surface: #F4F4F5; /* zinc-100 */
-  --color-surface-card: #FFFFFF;
-  --color-surface-hover: #FAFAFB;
-  --color-surface-muted: #E4E4E7; /* zinc-200 */
+  --color-surface: #f5f7f6;
+  --color-surface-card: #ffffff;
+  --color-surface-hover: #f8faf9;
+  --color-surface-muted: #e7ece9;
+  --color-sidebar: #edf6f0;
+  --color-shell: #dfeee5;
+  --color-accent: #4fae78;
+  --color-accent-hover: #419968;
+  --color-accent-dark: #245d40;
+  --color-accent-soft: #e8f6ed;
 
   /* 文字层级对比增强 */
-  --color-text-primary: #09090B; /* zinc-950，极深灰代替纯黑 */
-  --color-text-secondary: #71717A; /* zinc-500，次要文字 */
-  --color-text-muted: #A1A1AA; /* zinc-400，弱化文字 */
-  --color-text-inverse: #FFFFFF;
+  --color-text-primary: #18221d;
+  --color-text-secondary: #68736d;
+  --color-text-muted: #98a39d;
+  --color-text-inverse: #ffffff;
 
   /* 边框 - 极简干净 */
-  --color-border: #E4E4E7; /* zinc-200 */
-  --color-border-light: #F4F4F5; /* zinc-100 */
+  --color-border: #dce5df;
+  --color-border-light: #edf1ef;
 
   /* 功能色调优 - 降低饱和度使其更高级 */
   --color-danger: #EF4444; 
   --color-warning: #F59E0B;
   --color-info: #3B82F6;
-  --color-success: #10B981;
+  --color-success: #4fae78;
 
   /* 分数色 */
-  --color-score-high: #10B981;
+  --color-score-high: #4fae78;
   --color-score-mid: #F59E0B;
   --color-score-low: #EF4444;
 
   /* 现代卡片阴影 - 柔和扩散 */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-card: 0 4px 24px -4px rgba(0, 0, 0, 0.04), 0 2px 8px -2px rgba(0, 0, 0, 0.02);
-  --shadow-card-hover: 0 10px 30px -4px rgba(0, 0, 0, 0.08);
-  --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-card: 0 5px 16px rgba(44, 82, 60, 0.045), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  --shadow-card-hover: 0 7px 20px rgba(44, 82, 60, 0.075), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+  --shadow-modal: 0 24px 56px rgba(31, 48, 39, 0.16);
 
   /* 圆角加大 - 更柔和亲和 */
-  --radius-sm: 0.375rem; /* 6px */
-  --radius-md: 0.75rem; /* 12px */
-  --radius-lg: 1rem; /* 16px */
-  --radius-xl: 1.25rem; /* 20px */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.75rem;
   --radius-pill: 9999px;
 }
 
@@ -59,11 +64,15 @@
 
   html, body, #app {
     height: 100%;
-    overflow: hidden;
   }
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-synthesis: none;
+    font-optical-sizing: auto;
+    letter-spacing: 0;
+    line-height: 1.5;
     background: var(--color-surface);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
@@ -93,19 +102,172 @@
 @layer components {
   /* 高级 CTA 渐变按钮 (对应您的需求：仅在CTA按钮使用渐变) */
   .cta-btn {
-    @apply inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-text-primary)];
-    background: linear-gradient(135deg, #18181B 0%, #27272A 100%); /* 深色高级灰渐变 */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
+    @apply inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    background: var(--color-accent);
+    box-shadow: 0 2px 6px rgba(50, 132, 86, 0.2);
   }
   
   .cta-btn:hover {
-    background: linear-gradient(135deg, #27272A 0%, #3F3F46 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+    background: var(--color-accent-hover);
+    box-shadow: 0 5px 12px rgba(50, 132, 86, 0.22);
   }
 
   .cta-btn:active {
-    transform: translateY(0);
+    filter: brightness(0.98);
+  }
+
+  .brand-wordmark {
+    font-family: "Felix Titling", "Copperplate Gothic", "Times New Roman", serif;
+    letter-spacing: 0;
+  }
+
+  .ui-title {
+    font-weight: 600 !important;
+  }
+
+  .brand-wordmark {
+    font-weight: 700 !important;
+  }
+
+  body :is(p, span, button, label, th, td, input, textarea, select, summary, strong, b) {
+    font-weight: 400 !important;
+  }
+
+  body :is(p, span).ui-title {
+    font-weight: 600 !important;
+  }
+
+  body span.feature-card-title {
+    font-weight: 700 !important;
+  }
+
+  .metric-primary {
+    font-weight: 700 !important;
+  }
+
+  .metric-secondary {
+    font-weight: 600 !important;
+  }
+
+  .home-panel-top {
+    border-radius: 24px 0 0 24px;
+    box-shadow: 0 7px 22px rgba(42, 81, 57, 0.045);
+  }
+
+  .home-panel-bottom {
+    border-radius: 24px 0 0 24px;
+    box-shadow: 0 10px 24px rgba(42, 81, 57, 0.055);
+  }
+
+  .practice-panel {
+    border-radius: 24px 0 0 24px;
+    box-shadow: 0 7px 22px rgba(42, 81, 57, 0.045);
+  }
+
+  .reference-card {
+    border: 1px solid #e2e9e5;
+    border-radius: 12px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.99), rgba(252,254,253,0.96));
+    box-shadow: var(--shadow-card);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+
+  .reference-card:hover {
+    border-color: #d1dfd6;
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .reference-card-mint {
+    background: linear-gradient(180deg, #e5f6ed 0%, #f2faf6 58%, #ffffff 100%);
+  }
+
+  .reference-card-yellow {
+    background: linear-gradient(180deg, #eaf7e7 0%, #f5fbf2 58%, #ffffff 100%);
+  }
+
+  .reference-card-blue {
+    background: linear-gradient(180deg, #e2f5ec 0%, #f1faf6 58%, #ffffff 100%);
+  }
+
+  .reference-card-pink {
+    background: linear-gradient(180deg, #eaf7e9 0%, #f6fbf4 58%, #ffffff 100%);
+  }
+
+  :is(.reference-card-mint, .reference-card-yellow, .reference-card-blue, .reference-card-pink) {
+    border: 0;
+    box-shadow:
+      0 10px 26px rgba(45, 116, 76, 0.11),
+      0 2px 8px rgba(45, 116, 76, 0.055),
+      inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  }
+
+  :is(.reference-card-mint, .reference-card-yellow, .reference-card-blue, .reference-card-pink):hover {
+    border-color: transparent;
+    box-shadow:
+      0 12px 30px rgba(45, 116, 76, 0.14),
+      0 3px 10px rgba(45, 116, 76, 0.07),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  }
+
+  .feature-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 7px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+
+  .soft-action {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #eff5f1;
+    padding: 0 12px;
+    color: #57966d;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1;
+    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .soft-action:hover {
+    background: #e3f2e8;
+    color: #397d55;
+    box-shadow: inset 0 0 0 1px rgba(77, 151, 105, 0.1);
+  }
+
+  .home-card-action {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #eff5f1;
+    padding: 0 17px;
+    color: #57966d;
+    font-size: 14px;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .home-card-action:hover {
+    background: #e3f2e8;
+    color: #397d55;
+    box-shadow: inset 0 0 0 1px rgba(77, 151, 105, 0.1);
+  }
+}
+
+@media (max-width: 1023px) {
+  .home-panel-top,
+  .home-panel-bottom,
+  .practice-panel {
+    border-radius: 0;
+    box-shadow: none;
   }
 }
 
@@ -152,4 +314,30 @@
   .animate-slide-in-right {
     animation: slide-in-right 0.3s ease-out;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+#app :is(p, span, button, label, th, td, input, textarea, select, summary, strong, b, div) {
+  font-weight: 400 !important;
+}
+
+#app .ui-title {
+  font-weight: 600 !important;
+}
+
+#app .brand-wordmark,
+#app .metric-primary {
+  font-weight: 700 !important;
+}
+
+#app .metric-secondary {
+  font-weight: 600 !important;
 }

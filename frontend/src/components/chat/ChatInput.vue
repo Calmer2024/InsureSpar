@@ -51,7 +51,7 @@ function handleKeydown(e: KeyboardEvent, emit: (e: 'send', msg: string) => void)
     <span class="text-xs text-gray-500">请在右侧查看考官详细评估报告</span>
   </div>
 
-  <div v-else class="relative z-10 flex shrink-0 items-end gap-2 border-t border-gray-100 bg-white/90 p-3 backdrop-blur-xl sm:gap-3 sm:p-5">
+  <div v-else class="relative z-10 flex shrink-0 items-end gap-2 bg-white/90 p-3 backdrop-blur-xl sm:gap-3 sm:p-5">
     
     <ToolboxPanel
       :visible="showToolbox"

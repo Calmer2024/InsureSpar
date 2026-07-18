@@ -24,29 +24,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto px-3 pb-3 sm:px-5 sm:pb-5 xl:px-6 xl:pb-6">
-
-    <!-- Dashboard Grid -->
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-6 max-w-[1800px] mx-auto">
-      <!-- Left column: Profile -->
-      <div class="xl:col-span-1">
+  <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-3 sm:px-6 xl:px-8 xl:pb-10">
+    <div class="grid grid-cols-1 gap-x-10 gap-y-10 xl:grid-cols-3 xl:gap-y-12">
+      <section class="min-w-0 xl:col-span-1" aria-label="个人训练概览">
         <ProfileCard :data="overview" />
-      </div>
+      </section>
 
-      <!-- Middle + Right: Radar -->
-      <div class="xl:col-span-2">
+      <section class="min-w-0 xl:col-span-2" aria-label="综合能力模型">
         <RadarChartCard :data="capabilities" />
-      </div>
+      </section>
 
-      <!-- Bottom Left: Growth Curve (wider) -->
-      <div class="xl:col-span-2">
+      <section class="min-w-0 xl:col-span-2" aria-label="能力成长曲线">
         <GrowthCurveChart :data="growth" />
-      </div>
+      </section>
 
-      <!-- Bottom Right: Diagnostics -->
-      <div class="xl:col-span-1">
+      <section class="min-w-0 xl:col-span-1" aria-label="AI 导师总评">
         <DiagnosticList :data="capabilities" />
-      </div>
+      </section>
     </div>
   </div>
 </template>
