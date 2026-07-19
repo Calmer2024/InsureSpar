@@ -11,6 +11,7 @@ const props = defineProps<{
   currentSessionId?: string | null
   personas: Persona[]
   strategies: Strategy[]
+  embedded?: boolean
 }>()
 
 const STAGE_LABELS: Record<string, string> = {
@@ -144,39 +145,49 @@ function timeAgo(iso: string | null): string {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="drawer">
+  <Transition name="drawer">
       <div
         v-if="visible"
-        class="fixed inset-0 z-50 flex justify-end pointer-events-none"
+        class="fixed inset-0 z-50 flex justify-end pointer-events-none lg:h-full lg:shrink-0"
+        :class="embedded ? 'history-embedded overflow-hidden lg:relative lg:inset-auto lg:w-[420px]' : 'lg:w-full'"
       >
-        <div class="absolute inset-0 bg-transparent transition-opacity pointer-events-auto" @click="$emit('close')" />
+        <div v-if="!embedded" class="absolute inset-0 bg-transparent transition-opacity pointer-events-auto" @click="$emit('close')" />
+        <div v-else class="absolute inset-0 bg-black/10 pointer-events-auto lg:hidden" @click="$emit('close')" />
 
-        <div class="relative w-[420px] max-w-[85vw] h-full bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.05)] flex flex-col z-10 pointer-events-auto">
+        <div class="relative z-10 flex h-full w-[420px] max-w-[85vw] flex-col bg-white pointer-events-auto lg:w-full lg:max-w-none">
           
-          <div class="px-6 py-5 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-white">
-            <h2 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">历史记录</h2>
+          <header class="flex min-h-[84px] shrink-0 items-center justify-between bg-white px-5 pb-3 pt-6">
+            <div class="flex items-center gap-2.5">
+              <span class="grid h-8 w-8 place-items-center rounded-xl bg-[var(--color-accent-soft)] text-[var(--color-accent-dark)]">
+                <Icon icon="lucide:history" class="h-4 w-4" />
+              </span>
+              <span class="text-[15px] font-semibold text-[var(--color-text-primary)]">历史复盘</span>
+            </div>
             <button
               aria-label="关闭历史记录"
               title="关闭历史记录"
-              class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-zinc-900 hover:bg-[var(--color-surface)] transition-colors"
+              class="grid h-8 w-8 place-items-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
               @click="$emit('close')"
             >
-              <Icon icon="lucide:x" class="w-5 h-5" />
+              <Icon icon="lucide:x" class="h-4 w-4" />
             </button>
-          </div>
+          </header>
 
-          <div class="flex-1 overflow-y-auto bg-[var(--color-surface)]">
+          <div class="flex-1 overflow-y-auto bg-white">
             
             <div v-if="loading" class="flex flex-col items-center justify-center py-20 text-center">
               <div class="w-8 h-8 border-2 border-[var(--color-border-light)] border-t-zinc-900 rounded-full animate-spin mb-4" />
               <p class="text-sm font-medium text-[var(--color-text-primary)]">正在加载历史</p>
             </div>
 
-            <div v-else-if="sessions.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
-              <div class="w-16 h-16 rounded-2xl bg-white border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-5">
-                <Icon icon="lucide:history" class="w-8 h-8 text-[var(--color-text-muted)]" />
+            <div v-else-if="sessions.length === 0" class="flex flex-col items-center justify-center px-6 py-24 text-center">
+              <div class="mb-5 grid h-20 w-20 place-items-center overflow-hidden rounded-[2rem] bg-[var(--color-accent-soft)]">
+                <img src="/insurespar_logo.png" alt="InsureSpar" class="h-14 w-14 object-contain" />
               </div>
+              <div class="mb-3 grid h-9 w-9 place-items-center rounded-xl bg-[var(--color-accent-soft)] text-[var(--color-accent-dark)]">
+                <Icon icon="lucide:history" class="h-5 w-5" />
+              </div>
+              <p class="text-sm font-medium text-[var(--color-text-primary)]">历史记录</p>
               <p class="text-sm font-medium text-[var(--color-text-primary)]">暂无历史记录</p>
               <p class="text-xs text-[var(--color-text-secondary)] mt-1">完成的对练将在这里显示</p>
             </div>
@@ -240,8 +251,7 @@ function timeAgo(iso: string | null): string {
           </div>
         </div>
       </div>
-    </Transition>
-  </Teleport>
+  </Transition>
 </template>
 
 <style scoped>
@@ -249,6 +259,11 @@ function timeAgo(iso: string | null): string {
 .drawer-enter-active,
 .drawer-leave-active { 
   transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+}
+
+.history-embedded.drawer-enter-active,
+.history-embedded.drawer-leave-active {
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease;
 }
 
 /* 内部抽屉面板控制平滑位移 */
@@ -261,6 +276,11 @@ function timeAgo(iso: string | null): string {
 .drawer-enter-from,
 .drawer-leave-to { 
   opacity: 0; 
+}
+
+.history-embedded.drawer-enter-from,
+.history-embedded.drawer-leave-to {
+  width: 0 !important;
 }
 .drawer-enter-from .relative,
 .drawer-leave-to .relative { 

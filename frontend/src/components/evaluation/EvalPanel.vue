@@ -10,30 +10,45 @@ defineProps<{
   reportLoading?: boolean
   isFinished?: boolean
 }>()
+
+defineEmits<{
+  (e: 'close'): void
+}>()
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-white">
-    <div class="px-6 py-4 pr-14 bg-white shrink-0 flex flex-col justify-center">
-      <h2 class="text-base font-semibold text-[var(--color-text-primary)] tracking-tight flex items-center gap-2">
-        <div class="w-6 h-6 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center">
-          <Icon icon="lucide:list-checks" class="w-3.5 h-3.5 text-[var(--color-text-primary)]" />
-        </div>
-        实时评估
-      </h2>
-      <p class="text-xs text-[var(--color-text-secondary)] mt-1">AI 考官将根据每轮话术给出反馈</p>
-    </div>
-
-    <div class="flex-1 overflow-y-auto px-5 py-5 space-y-4 bg-[var(--color-surface)]">
+  <div class="flex h-full flex-col bg-white">
+    <header class="flex min-h-[84px] shrink-0 items-center justify-between bg-white px-5 pb-3 pt-6">
+      <div class="flex items-center gap-2.5">
+        <span class="grid h-8 w-8 place-items-center rounded-xl bg-[var(--color-accent-soft)] text-[var(--color-accent-dark)]">
+          <Icon icon="lucide:list-checks" class="h-4 w-4" />
+        </span>
+        <span class="text-[15px] font-semibold text-[var(--color-text-primary)]">实时评估</span>
+      </div>
+      <button
+        type="button"
+        aria-label="关闭实时反馈"
+        title="关闭实时反馈"
+        class="grid h-8 w-8 place-items-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+        @click="$emit('close')"
+      >
+        <Icon icon="lucide:x" class="h-4 w-4" />
+      </button>
+    </header>
+    <div class="flex-1 overflow-y-auto bg-white px-5 py-5 space-y-4">
       <div v-if="isFinished || reportLoading" class="mb-2">
         <FinalReportInline :report="finalReport" :loading="reportLoading" />
       </div>
 
-      <div v-if="evaluations.length === 0 && !isFinished" class="h-full flex flex-col items-center justify-center animate-fade-in">
-        <div class="w-14 h-14 rounded-2xl bg-white border border-[var(--color-border-light)] shadow-sm flex items-center justify-center mb-4">
-          <Icon icon="lucide:hourglass" class="w-6 h-6 text-[var(--color-text-muted)]" />
+      <div v-if="evaluations.length === 0 && !isFinished" class="flex h-full flex-col items-center justify-center text-center animate-fade-in">
+        <div class="mb-5 grid h-20 w-20 place-items-center overflow-hidden rounded-[2rem] bg-[var(--color-accent-soft)]">
+          <img src="/insurespar_logo.png" alt="InsureSpar" class="h-14 w-14 object-contain" />
         </div>
-        <p class="text-sm font-medium text-[var(--color-text-primary)]">等待首轮交锋</p>
+        <div class="mb-3 grid h-9 w-9 place-items-center rounded-xl bg-[var(--color-accent-soft)] text-[var(--color-accent-dark)]">
+          <Icon icon="lucide:list-checks" class="h-5 w-5" />
+        </div>
+        <p class="text-sm font-medium text-[var(--color-text-primary)]">实时评估</p>
+        <p class="mt-1 text-sm font-medium text-[var(--color-text-primary)]">等待首轮交锋</p>
         <p class="text-xs text-[var(--color-text-secondary)] text-center mt-1.5">
           发送消息后<br />考官评估结果将在此显示
         </p>

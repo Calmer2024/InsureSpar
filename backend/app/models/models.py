@@ -73,3 +73,12 @@ class FinalReportRecord(Base):
     created_at = Column(DateTime, default=func.now())
     
     session = relationship("SessionRecord", back_populates="report")
+
+
+class DashboardCacheRecord(Base):
+    __tablename__ = "dashboard_cache"
+
+    cache_key = Column(String(64), primary_key=True)
+    data_signature = Column(String(64), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)

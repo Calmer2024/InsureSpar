@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { Icon } from '@iconify/vue'
+
 defineProps<{
   score: number
   maxScore?: number
   label: string
+  icon?: string
   showValue?: boolean
 }>()
 
@@ -16,7 +19,8 @@ function scoreClass(score: number): string {
 
 <template>
   <div class="flex items-center gap-4">
-    <span class="text-xs font-medium text-[var(--color-text-secondary)] w-14 shrink-0 truncate">
+    <span class="flex w-[92px] shrink-0 items-center gap-1.5 text-xs font-medium text-[var(--color-text-secondary)]">
+      <Icon v-if="icon" :icon="icon" class="h-3.5 w-3.5 text-[var(--color-accent-dark)]" />
       {{ label }}
     </span>
     

@@ -1,5 +1,6 @@
 # 文件：app/services/dashboard_service.py
 """Dashboard 数据聚合服务 — 从数据库中提取用户训练统计数据"""
+import hashlib
 import json
 import traceback
 from sqlalchemy.orm import Session
@@ -7,7 +8,7 @@ from sqlalchemy import func, desc
 from openai import AsyncOpenAI
 
 from app.core.config import LLM_MODEL, LLM_BASE_URL, LLM_API_KEY
-from app.models.models import SessionRecord, EvaluationRecord, FinalReportRecord
+from app.models.models import DashboardCacheRecord, SessionRecord, EvaluationRecord, FinalReportRecord
 
 
 # ==========================================
@@ -185,7 +186,44 @@ def get_capabilities(db: Session) -> dict:
         "_avg_by_dim": avg_by_dim,
         "_key_to_label": key_to_label,
         "_reports_count": len(reports),
+        "_data_version": [
+            f"{report.session_id}:{report.created_at.isoformat() if report.created_at else ''}"
+            for report in reports
+        ],
     }
+
+
+def get_dashboard_review_signature(capabilities_data: dict, overview_stats: dict) -> str:
+    payload = {
+        "data_version": capabilities_data.get("_data_version", []),
+        "avg_by_dim": capabilities_data.get("_avg_by_dim", {}),
+        "weaknesses": capabilities_data.get("weaknesses", []),
+        "reports_count": capabilities_data.get("_reports_count", 0),
+        "overview_stats": overview_stats,
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def get_cached_dashboard_review(db: Session, data_signature: str) -> str | None:
+    record = db.get(DashboardCacheRecord, "ai_general_review")
+    if record and record.data_signature == data_signature:
+        return record.content
+    return None
+
+
+def save_cached_dashboard_review(db: Session, data_signature: str, content: str) -> None:
+    record = db.get(DashboardCacheRecord, "ai_general_review")
+    if record:
+        record.data_signature = data_signature
+        record.content = content
+    else:
+        db.add(DashboardCacheRecord(
+            cache_key="ai_general_review",
+            data_signature=data_signature,
+            content=content,
+        ))
+    db.commit()
 
 
 # ==========================================

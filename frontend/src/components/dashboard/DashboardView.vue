@@ -24,23 +24,52 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-3 sm:px-6 xl:px-8 xl:pb-10">
-    <div class="grid grid-cols-1 gap-x-10 gap-y-10 xl:grid-cols-3 xl:gap-y-12">
-      <section class="min-w-0 xl:col-span-1" aria-label="个人训练概览">
-        <ProfileCard :data="overview" />
-      </section>
+  <div class="dashboard-view min-h-0 flex-1 overflow-y-auto bg-white px-4 pb-4 pt-3 sm:px-6 lg:overflow-hidden xl:px-8">
+    <section class="dashboard-surface h-full min-h-0 overflow-hidden" aria-label="学员能力档案">
+      <div class="dashboard-grid grid h-full min-h-0 grid-cols-1 overflow-y-auto lg:grid-cols-[280px_minmax(0,1fr)] lg:overflow-hidden">
+        <section class="profile-region min-h-0 overflow-hidden" aria-label="个人训练概览">
+          <ProfileCard :data="overview" />
+        </section>
 
-      <section class="min-w-0 xl:col-span-2" aria-label="综合能力模型">
-        <RadarChartCard :data="capabilities" />
-      </section>
+        <div class="grid min-h-0 grid-cols-1 gap-4 p-4 lg:grid-cols-2 lg:grid-rows-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:pl-0">
+          <section class="dashboard-card min-h-0 overflow-hidden" aria-label="综合能力模型">
+            <RadarChartCard :data="capabilities" />
+          </section>
 
-      <section class="min-w-0 xl:col-span-2" aria-label="能力成长曲线">
-        <GrowthCurveChart :data="growth" />
-      </section>
+          <section class="dashboard-card min-h-0 overflow-hidden" aria-label="AI 导师总评">
+            <DiagnosticList :data="capabilities" />
+          </section>
 
-      <section class="min-w-0 xl:col-span-1" aria-label="AI 导师总评">
-        <DiagnosticList :data="capabilities" />
-      </section>
-    </div>
+          <section class="dashboard-card min-h-0 overflow-hidden lg:col-span-2" aria-label="能力成长曲线">
+            <GrowthCurveChart :data="growth" />
+          </section>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
+
+<style scoped>
+.dashboard-surface {
+  background: transparent;
+}
+
+.profile-region {
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.dashboard-card {
+  min-width: 0;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(216, 232, 222, 0.9);
+  box-shadow: 0 8px 24px rgba(56, 94, 71, 0.06);
+}
+
+.dashboard-grid > div {
+  min-width: 0;
+}
+</style>

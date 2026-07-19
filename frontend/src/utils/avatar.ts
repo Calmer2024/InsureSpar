@@ -9,6 +9,8 @@ const AVATAR_BY_PERSONA_ID: Record<string, string> = {
   rebate_seeker: '/avatars/rebate_seeker.png',
 }
 
+export const DEFAULT_AVATAR = '/avatars/default.png'
+
 export function personaAvatar(persona?: Pick<Persona, 'persona_id'> | null): string | undefined {
   return persona ? AVATAR_BY_PERSONA_ID[persona.persona_id] : undefined
 }

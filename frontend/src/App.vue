@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Icon } from '@iconify/vue'
 import type { AppStatus, ChatMessage, Evaluation, FinalReport, Persona, Strategy } from './types'
 import type { SSEEvent } from './services/api'
 import {
@@ -115,7 +114,26 @@ function handleNewSession() {
 }
 
 function navigateTo(view: 'home' | 'practice' | 'dashboard') {
+  if (view !== 'practice') {
+    showHistory.value = false
+    isEvalCollapsed.value = true
+  }
   currentView.value = view
+}
+
+function openHistory() {
+  if (currentView.value !== 'practice') {
+    currentView.value = 'practice'
+    showHistory.value = true
+  } else {
+    showHistory.value = !showHistory.value
+  }
+  isEvalCollapsed.value = true
+}
+
+function toggleEvaluation() {
+  isEvalCollapsed.value = !isEvalCollapsed.value
+  if (!isEvalCollapsed.value) showHistory.value = false
 }
 
 async function onStart(personaId: string, strategyId: string) {
@@ -497,74 +515,82 @@ function buildStageText(ev: SSEEvent): string {
       :current-view="currentView"
       @navigate="navigateTo"
       @new-session="handleNewSession"
-      @show-history="showHistory = true"
+      @show-history="openHistory"
     />
 
-    <div class="flex min-h-0 min-w-0 w-full flex-1 flex-col pb-16 lg:overflow-hidden lg:pb-0">
+    <div
+      class="flex min-h-0 min-w-0 w-full flex-1 flex-col pb-16 lg:overflow-hidden lg:pb-0"
+    >
       <main v-if="currentView === 'home'" class="min-h-0 flex-1 overflow-y-auto">
         <HomeView
           @start-practice="handleNewSession"
           @navigate-dashboard="currentView = 'dashboard'"
-          @show-history="showHistory = true"
+          @show-history="openHistory"
         />
       </main>
 
       <template v-else-if="currentView === 'practice'">
         <main class="min-h-0 flex-1 overflow-hidden">
           <section class="practice-panel relative flex h-full w-full flex-col overflow-hidden bg-white">
-            <header class="z-20 shrink-0 bg-white px-4 pb-3 pt-5 sm:px-6 sm:pt-6 xl:px-8">
-              <TopBar
-                :status="appStatus"
-                :status-text="statusText"
-                :turn-count="turnCount"
-                :stage-label="stageLabel"
-                :session-id="sessionId"
-                :eval-open="!isEvalCollapsed"
-                @new-session="handleNewSession"
-                @show-history="showHistory = true"
-                @show-dashboard="currentView = 'dashboard'"
-                @toggle-evaluation="isEvalCollapsed = !isEvalCollapsed"
-                @back="currentView = 'home'"
-              />
-            </header>
-
-            <div class="relative min-h-0 flex-1 overflow-hidden">
-              <ChatPanel
-                class="h-full"
-                :messages="messages"
-                :title="chatTitle"
-                :subtitle="chatSubtitle"
-                :active-persona="activePersona"
-                :disabled="appStatus === 'processing'"
-                :is-finished="isFinished"
-                :is-history-view="isHistoryView"
-                :auto-timer-active="autoTimerActive"
-                @send="handleSend"
-                @step="handleStep"
-                @toggle-auto-timer="toggleAutoTimer"
-                @resume-session="handleResumeSession"
-              />
-
-              <aside
-                v-if="!isEvalCollapsed"
-                class="absolute inset-y-0 right-0 z-30 w-full bg-white shadow-[-16px_0_32px_rgba(42,81,57,0.08)] sm:w-[420px]"
-              >
-                <button
-                  type="button"
-                  class="absolute right-3 top-3 z-40 grid h-8 w-8 place-items-center rounded-full border border-[var(--color-border)] bg-white text-zinc-500 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
-                  title="关闭实时反馈"
-                  aria-label="关闭实时反馈"
-                  @click="isEvalCollapsed = true"
-                >
-                  <Icon icon="lucide:x" class="h-4 w-4" />
-                </button>
-                <EvalPanel
-                  :evaluations="evaluations"
-                  :final-report="finalReport"
-                  :report-loading="reportLoading"
+            <div class="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+              <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[flex-basis,width] duration-300 ease-out">
+                <header class="z-20 shrink-0 bg-white px-4 pb-3 pt-5 sm:px-6 sm:pt-6 xl:px-8">
+                  <TopBar
+                    :status="appStatus"
+                    :status-text="statusText"
+                    :turn-count="turnCount"
+                    :stage-label="stageLabel"
+                    :session-id="sessionId"
+                    :active-persona="activePersona"
+                    :eval-open="!isEvalCollapsed"
+                    @new-session="handleNewSession"
+                    @show-history="openHistory"
+                    @show-dashboard="currentView = 'dashboard'"
+                    @toggle-evaluation="toggleEvaluation"
+                    @back="currentView = 'home'"
+                  />
+                </header>
+                <ChatPanel
+                  class="min-h-0 flex-1"
+                  :messages="messages"
+                  :title="chatTitle"
+                  :subtitle="chatSubtitle"
+                  :active-persona="activePersona"
+                  :disabled="appStatus === 'processing'"
                   :is-finished="isFinished"
+                  :is-history-view="isHistoryView"
+                  :auto-timer-active="autoTimerActive"
+                  @send="handleSend"
+                  @step="handleStep"
+                  @toggle-auto-timer="toggleAutoTimer"
+                  @resume-session="handleResumeSession"
                 />
-              </aside>
+              </div>
+
+              <Transition name="eval-push">
+                <aside
+                  v-if="!isEvalCollapsed"
+                  class="relative min-w-0 shrink-0 bg-white w-full sm:w-[420px]"
+                >
+                  <EvalPanel
+                    :evaluations="evaluations"
+                    :final-report="finalReport"
+                    :report-loading="reportLoading"
+                    :is-finished="isFinished"
+                    @close="isEvalCollapsed = true"
+                  />
+                </aside>
+              </Transition>
+
+              <HistoryDrawer
+                :visible="showHistory"
+                :embedded="true"
+                :current-session-id="sessionId"
+                :personas="personas"
+                :strategies="strategies"
+                @close="showHistory = false"
+                @view-session="viewHistorySession"
+              />
             </div>
           </section>
         </main>
@@ -573,22 +599,11 @@ function buildStageText(ev: SSEEvent): string {
       <template v-else>
         <main class="min-h-0 flex-1 overflow-hidden">
           <section class="practice-panel flex h-full w-full flex-col overflow-hidden bg-white">
-            <header class="flex h-[88px] shrink-0 items-center justify-between gap-4 bg-white px-4 sm:px-6 xl:px-8">
-              <h1 class="text-[25px] font-bold leading-[1.35] sm:text-[28px]">能力中心</h1>
-              <button
-                type="button"
-                class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-accent)] text-white transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-2"
-                title="新建对练"
-                aria-label="新建对练"
-                @click="handleNewSession"
-              >
-                <Icon icon="lucide:plus" class="h-4 w-4" />
-              </button>
-            </header>
             <DashboardView />
           </section>
         </main>
       </template>
+
     </div>
 
     <SessionSetupModal
@@ -599,13 +614,5 @@ function buildStageText(ev: SSEEvent): string {
       @close="showSetupModal = false"
     />
 
-    <HistoryDrawer
-      :visible="showHistory"
-      :current-session-id="sessionId"
-      :personas="personas"
-      :strategies="strategies"
-      @close="showHistory = false"
-      @view-session="viewHistorySession"
-    />
   </div>
 </template>

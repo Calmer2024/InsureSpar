@@ -29,9 +29,9 @@ const expanded = ref(false)
     </div>
 
     <div class="space-y-3 mb-4">
-      <ScoreBar label="专业性" :score="evaluation.professionalism_score" />
-      <ScoreBar label="合规性" :score="evaluation.compliance_score" />
-      <ScoreBar label="策略性" :score="evaluation.strategy_score" />
+      <ScoreBar label="专业性" icon="lucide:graduation-cap" :score="evaluation.professionalism_score" />
+      <ScoreBar label="合规性" icon="lucide:shield-check" :score="evaluation.compliance_score" />
+      <ScoreBar label="策略性" icon="lucide:route" :score="evaluation.strategy_score" />
     </div>
 
     <div class="px-4 py-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border-light)] text-xs text-[var(--color-text-primary)] leading-relaxed">

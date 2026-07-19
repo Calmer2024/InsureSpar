@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Icon } from '@iconify/vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
@@ -86,8 +87,11 @@ const option = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col px-1 py-2 animate-fade-in">
-    <h3 class="mb-1 text-[17px] font-bold text-[var(--color-text-primary)]">能力成长曲线</h3>
+  <div class="flex h-full min-h-0 flex-col p-5 animate-fade-in">
+    <div class="flex items-center gap-2">
+      <span class="grid h-8 w-8 place-items-center rounded-xl bg-[var(--color-accent-soft)] text-[var(--color-accent-dark)]"><Icon icon="lucide:trending-up" class="h-4 w-4" /></span>
+      <h3 class="text-[17px] font-bold text-[var(--color-text-primary)]">能力成长曲线</h3>
+    </div>
     <p class="text-[11px] text-[var(--color-text-muted)] mb-4">点击图例可切换维度</p>
 
     <div class="flex-1 min-h-0">
@@ -95,9 +99,9 @@ const option = computed(() => {
         v-if="data"
         :option="option"
         autoresize
-        style="width: 100%; height: 300px;"
+        style="width: 100%; height: 235px;"
       />
-      <div v-else class="h-[300px] flex items-center justify-center text-[var(--color-text-muted)] text-sm">加载中...</div>
+      <div v-else class="flex h-[235px] items-center justify-center text-sm text-[var(--color-text-muted)]">加载中...</div>
     </div>
   </div>
 </template>

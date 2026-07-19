@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ChatMessage, Persona } from '../../types'
 import { computed, nextTick, ref, watch } from 'vue'
-import { Icon } from '@iconify/vue'
 import ChatBubble from './ChatBubble.vue'
 import RoundDivider from './RoundDivider.vue'
 import ChatInput from './ChatInput.vue'
@@ -62,8 +61,8 @@ watch(
         v-if="messages.length === 0"
         class="flex h-full flex-col items-center justify-center pb-10 text-center animate-fade-in"
       >
-        <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-[2rem] bg-[var(--color-accent-soft)] shadow-sm">
-          <Icon icon="lucide:messages-square" class="h-10 w-10 text-[var(--color-accent)]" />
+        <div class="mb-6 grid h-20 w-20 place-items-center overflow-hidden rounded-[2rem] bg-[var(--color-accent-soft)] shadow-sm">
+          <img src="/insurespar_logo.png" alt="InsureSpar" class="h-14 w-14 object-contain" />
         </div>
         <h3 class="text-[16px] font-bold text-gray-800">对练已就绪</h3>
         <p class="mt-2 max-w-[240px] text-xs leading-relaxed text-gray-400">

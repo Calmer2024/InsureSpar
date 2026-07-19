@@ -14,8 +14,9 @@
   --color-shell: #dfeee5;
   --color-accent: #4fae78;
   --color-accent-hover: #419968;
-  --color-accent-dark: #245d40;
+  --color-accent-dark: #41b65f;
   --color-accent-soft: #e8f6ed;
+  --color-nav-active: #d8f3df;
 
   /* 文字层级对比增强 */
   --color-text-primary: #18221d;
@@ -175,6 +176,18 @@
   .reference-card:hover {
     border-color: #d1dfd6;
     box-shadow: var(--shadow-card-hover);
+  }
+
+  .eval-push-enter-active,
+  .eval-push-leave-active {
+    overflow: hidden;
+    transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease;
+  }
+
+  .eval-push-enter-from,
+  .eval-push-leave-to {
+    width: 0 !important;
+    opacity: 0;
   }
 
   .reference-card-mint {

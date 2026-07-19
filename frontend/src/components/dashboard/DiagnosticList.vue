@@ -8,11 +8,14 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex h-full flex-col px-1 py-2 animate-fade-in">
-    <h3 class="text-[15px] font-bold text-[var(--color-text-primary)] mb-1">AI 导师总评</h3>
+  <div class="flex h-full min-h-0 flex-col overflow-hidden p-5 animate-fade-in">
+    <div class="flex items-center gap-2">
+      <span class="grid h-8 w-8 place-items-center rounded-xl bg-[var(--color-accent-soft)]"><Icon icon="lucide:bot" class="h-4 w-4 text-[var(--color-accent-dark)]" /></span>
+      <h3 class="text-[15px] font-bold text-[var(--color-text-primary)]">AI 导师总评</h3>
+    </div>
     <p class="text-[11px] text-[var(--color-text-muted)] mb-4">弱点诊断与专项建议</p>
 
-    <div v-if="data" class="mb-6">
+    <div v-if="data" class="mb-4 min-h-0 overflow-y-auto">
       <div class="flex items-start gap-2.5">
         <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-accent-soft)]">
           <Icon icon="lucide:bot" class="h-4 w-4 text-[var(--color-accent)]" />

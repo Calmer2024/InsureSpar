@@ -124,9 +124,9 @@ function personaText(personaId: string) {
 
           <div class="mt-2 grid min-h-[96px] min-w-0 grid-cols-[0.75fr_1.25fr] items-center gap-3">
             <div class="min-w-0">
-              <div class="flex items-end gap-1.5">
-                <strong class="metric-primary text-[34px] leading-none tabular-nums">{{ overview?.stats.total_sessions ?? 0 }}</strong>
-                <span class="pb-0.5 text-xs text-[var(--color-text-muted)]">次</span>
+              <div class="flex items-end gap-1.5 text-[var(--color-accent-dark)]">
+                <strong class="metric-primary text-[48px] leading-none tabular-nums">{{ overview?.stats.total_sessions ?? 0 }}</strong>
+                <span class="pb-0.5 text-[16px] leading-none">次</span>
               </div>
               <p class="mt-2 text-[11px] text-[var(--color-text-muted)]">累计完成训练</p>
             </div>
@@ -146,15 +146,24 @@ function personaText(personaId: string) {
           <div class="mt-3 grid min-w-0 grid-cols-3 gap-3 border-t border-[#edf1ef] pt-4">
             <div class="min-w-0">
               <p class="text-[11px] text-[var(--color-text-muted)]">历史均分</p>
-              <p class="metric-secondary mt-1 text-[18px] leading-[1.35] tabular-nums">{{ overview?.stats.avg_score_all_time?.toFixed(1) ?? '0.0' }}</p>
+              <div class="mt-1 flex items-end gap-1 text-[var(--color-accent-dark)]">
+                <span class="metric-secondary text-[29px] leading-none tabular-nums">{{ overview?.stats.avg_score_all_time?.toFixed(1) ?? '0.0' }}</span>
+                <span class="pb-0.5 text-[13px] leading-none">分</span>
+              </div>
             </div>
             <div class="min-w-0">
               <p class="text-[11px] text-[var(--color-text-muted)]">通关次数</p>
-              <p class="metric-secondary mt-1 text-[18px] leading-[1.35] tabular-nums">{{ overview?.stats.deal_closed_count ?? 0 }}</p>
+              <div class="mt-1 flex items-end gap-1 text-[var(--color-accent-dark)]">
+                <span class="metric-secondary text-[29px] leading-none tabular-nums">{{ overview?.stats.deal_closed_count ?? 0 }}</span>
+                <span class="pb-0.5 text-[13px] leading-none">次</span>
+              </div>
             </div>
             <div class="min-w-0">
               <p class="text-[11px] text-[var(--color-text-muted)]">训练时长</p>
-              <p class="metric-secondary mt-1 text-[18px] leading-[1.35] tabular-nums">{{ Math.round((overview?.stats.total_duration_minutes ?? 0) / 60) }}h</p>
+              <div class="mt-1 flex items-end gap-1 text-[var(--color-accent-dark)]">
+                <span class="metric-secondary text-[29px] leading-none tabular-nums">{{ Math.round((overview?.stats.total_duration_minutes ?? 0) / 60) }}</span>
+                <span class="pb-0.5 text-[13px] leading-none">小时</span>
+              </div>
             </div>
           </div>
 
@@ -169,7 +178,7 @@ function personaText(personaId: string) {
         </article>
 
         <div class="grid gap-3 sm:grid-cols-2 sm:grid-rows-2">
-          <button type="button" class="reference-card reference-card-mint group flex min-h-[154px] flex-col p-5 text-left" @click="$emit('start-practice')">
+          <button type="button" class="reference-card reference-card-mint group flex min-h-[154px] flex-col border-0 p-5 text-left" @click="$emit('start-practice')">
             <div class="flex items-center gap-3.5">
               <img src="/icons/practice.png" alt="" aria-hidden="true" class="h-[58px] w-[58px] shrink-0 object-contain" />
               <span class="feature-card-title text-[21px] leading-[1.3]">实战对练</span>
@@ -178,7 +187,7 @@ function personaText(personaId: string) {
             <span class="home-card-action mt-auto self-end">开始训练</span>
           </button>
 
-          <button type="button" class="reference-card reference-card-yellow group flex min-h-[154px] flex-col p-5 text-left" @click="$emit('navigate-dashboard')">
+          <button type="button" class="reference-card reference-card-yellow group flex min-h-[154px] flex-col border-0 p-5 text-left" @click="$emit('navigate-dashboard')">
             <div class="flex items-center gap-3.5">
               <img src="/icons/capability.png" alt="" aria-hidden="true" class="h-[58px] w-[58px] shrink-0 object-contain" />
               <span class="feature-card-title text-[21px] leading-[1.3]">能力中心</span>
@@ -187,7 +196,7 @@ function personaText(personaId: string) {
             <span class="home-card-action mt-auto self-end">查看能力</span>
           </button>
 
-          <button type="button" class="reference-card reference-card-blue group flex min-h-[154px] flex-col p-5 text-left" @click="$emit('show-history')">
+          <button type="button" class="reference-card reference-card-blue group flex min-h-[154px] flex-col border-0 p-5 text-left" @click="$emit('show-history')">
             <div class="flex items-center gap-3.5">
               <img src="/icons/history.png" alt="" aria-hidden="true" class="h-[58px] w-[58px] shrink-0 object-contain" />
               <span class="feature-card-title text-[21px] leading-[1.3]">历史复盘</span>
@@ -196,7 +205,7 @@ function personaText(personaId: string) {
             <span class="home-card-action mt-auto self-end">查看记录</span>
           </button>
 
-          <button type="button" class="reference-card reference-card-pink group flex min-h-[154px] flex-col p-5 text-left" @click="$emit('start-practice')">
+          <button type="button" class="reference-card reference-card-pink group flex min-h-[154px] flex-col border-0 p-5 text-left" @click="$emit('start-practice')">
             <div class="flex items-center gap-3.5">
               <img src="/icons/specialized.png" alt="" aria-hidden="true" class="h-[58px] w-[58px] shrink-0 object-contain" />
               <span class="feature-card-title text-[21px] leading-[1.3]">专项训练</span>
@@ -245,7 +254,10 @@ function personaText(personaId: string) {
       </div>
 
       <div v-else class="flex flex-1 flex-col items-center justify-center px-6 py-8 text-center">
-        <Icon icon="lucide:inbox" class="h-7 w-7 text-[var(--color-text-muted)]" />
+        <div class="mb-3 grid h-14 w-14 place-items-center overflow-hidden rounded-2xl bg-[var(--color-accent-soft)]">
+          <img src="/insurespar_logo.png" alt="InsureSpar" class="h-10 w-10 object-contain" />
+        </div>
+        <Icon icon="lucide:inbox" class="h-6 w-6 text-[var(--color-accent-dark)]" />
         <p class="mt-2 text-sm font-medium">还没有训练记录</p>
       </div>
     </section>

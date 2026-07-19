@@ -9,6 +9,9 @@ from app.services.dashboard_service import (
     get_capabilities,
     get_growth_trend,
     generate_ai_general_review,
+    get_cached_dashboard_review,
+    get_dashboard_review_signature,
+    save_cached_dashboard_review,
 )
 
 router = APIRouter(prefix="/api/user/dashboard", tags=["个人中心 Dashboard"])
@@ -39,14 +42,21 @@ async def dashboard_capabilities(db: Session = Depends(get_db)):
     # 获取 overview 统计作为 LLM 上下文
     overview_data = get_overview(db)
 
-    # 调用 LLM 生成综合点评
-    ai_review = await generate_ai_general_review(cap_data, overview_data.get("stats", {}))
+    overview_stats = overview_data.get("stats", {})
+    data_signature = get_dashboard_review_signature(cap_data, overview_stats)
+    ai_review = get_cached_dashboard_review(db, data_signature)
+
+    if ai_review is None:
+        ai_review = await generate_ai_general_review(cap_data, overview_stats)
+        save_cached_dashboard_review(db, data_signature, ai_review)
+
     cap_data["ai_general_review"] = ai_review
 
     # 清理内部字段，不返回给前端
     cap_data.pop("_avg_by_dim", None)
     cap_data.pop("_key_to_label", None)
     cap_data.pop("_reports_count", None)
+    cap_data.pop("_data_version", None)
 
     return {"data": cap_data}
 

@@ -58,22 +58,6 @@ function handleKeydown(e: KeyboardEvent, emit: (e: 'send', msg: string) => void)
       @close="showToolbox = false"
     />
 
-    <div class="relative shrink-0 group mb-1 animate-fade-in">
-      <button
-        :disabled="disabled"
-        class="w-[46px] h-[46px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
-        :class="showToolbox ? 'bg-gray-100 text-gray-800' : 'bg-[#1A1A1A] text-white hover:scale-105 hover:bg-black'"
-        @click="showToolbox = !showToolbox"
-        :aria-label="showToolbox ? '关闭工具箱' : '打开工具箱'"
-        :title="showToolbox ? '关闭工具箱' : '打开工具箱'"
-      >
-        <Icon :icon="showToolbox ? 'lucide:x' : 'lucide:tool-case'" class="w-5 h-5" />
-      </button>
-      <div class="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[#1A1A1A] text-white text-[10px] font-medium rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
-        {{ showToolbox ? '关闭工具箱' : '打开工具箱' }}
-      </div>
-    </div>
-
     <div class="flex-1 bg-white/80 backdrop-blur-2xl border border-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] rounded-[24px] p-2.5 flex flex-col transition-all focus-within:bg-white focus-within:shadow-[0_12px_50px_rgba(0,0,0,0.08)] animate-fade-in-up">
       
       <textarea
@@ -88,11 +72,17 @@ function handleKeydown(e: KeyboardEvent, emit: (e: 'send', msg: string) => void)
       ></textarea>
 
       <div class="flex flex-wrap items-center justify-between gap-2 mt-2 px-1">
-        <div class="hidden items-center gap-2 md:flex">
-          <span class="text-[11px] text-gray-400 flex items-center gap-1.5 ml-2">
-            <Icon icon="lucide:briefcase-business" class="w-3.5 h-3.5" />
-            支持手动输入或 AI 辅助推进
-          </span>
+        <div class="flex items-center">
+          <button
+            :disabled="disabled"
+            class="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-dark)] disabled:opacity-40"
+            :class="showToolbox ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent-dark)]' : ''"
+            @click="showToolbox = !showToolbox"
+            :aria-label="showToolbox ? '关闭工具箱' : '打开工具箱'"
+            :title="showToolbox ? '关闭工具箱' : '打开工具箱'"
+          >
+            <Icon :icon="showToolbox ? 'lucide:x' : 'lucide:tool-case'" class="h-[18px] w-[18px]" />
+          </button>
         </div>
 
         <div class="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2.5">
@@ -119,13 +109,13 @@ function handleKeydown(e: KeyboardEvent, emit: (e: 'send', msg: string) => void)
           </button>
           
           <button
-            :disabled="disabled || !inputText.trim()"
-            class="w-9 h-9 ml-1 rounded-full bg-[#1A1A1A] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:scale-100 active:scale-95 hover:bg-black shadow-md"
+            :disabled="disabled"
+            class="ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#111111] text-white transition-colors hover:bg-[#262626] disabled:cursor-not-allowed disabled:bg-[#111111] disabled:text-white"
             @click="handleSend($emit)"
             title="发送消息"
             aria-label="发送消息"
           >
-            <Icon icon="lucide:send" class="w-4 h-4 ml-0.5" />
+            <Icon icon="lucide:arrow-right" class="h-5 w-5" />
           </button>
         </div>
       </div>
