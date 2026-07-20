@@ -69,7 +69,7 @@ const option = computed(() => {
         v-if="data"
         :option="option"
         autoresize
-        style="width: 100%; height: 210px;"
+        style="width: 100%; height: 100%; min-height: 120px;"
       />
       <div v-else class="text-[var(--color-text-muted)] text-sm">加载中...</div>
     </div>

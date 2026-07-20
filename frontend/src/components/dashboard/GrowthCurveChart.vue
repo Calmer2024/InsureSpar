@@ -99,9 +99,9 @@ const option = computed(() => {
         v-if="data"
         :option="option"
         autoresize
-        style="width: 100%; height: 235px;"
+        style="width: 100%; height: 100%; min-height: 130px;"
       />
-      <div v-else class="flex h-[235px] items-center justify-center text-sm text-[var(--color-text-muted)]">加载中...</div>
+      <div v-else class="flex h-full min-h-[130px] items-center justify-center text-sm text-[var(--color-text-muted)]">加载中...</div>
     </div>
   </div>
 </template>
